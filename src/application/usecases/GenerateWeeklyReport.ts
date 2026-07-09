@@ -1,17 +1,8 @@
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
-
-export interface CategorySummary {
-  category: string;
-  total: number;
-}
-
-export interface WeeklySummary {
-  total: number;
-  byCategory: CategorySummary[];
-}
+import { WeeklySummary } from "../../domain/entities/WeeklySummary";
 
 export class GenerateWeeklyReport {
-  constructor(private readonly repository: TransactionRepository) {}
+  constructor(private readonly repository: TransactionRepository) { }
 
   async execute(userId: string): Promise<WeeklySummary> {
     const to = new Date();
@@ -35,10 +26,10 @@ export class GenerateWeeklyReport {
       );
     }
 
-    const byCategory: CategorySummary[] = Array.from(
-      totalsByCategory.entries()
-    ).map(([category, sum]) => ({ category, total: sum }));
+    const byCategory = Array.from(totalsByCategory.entries()).map(
+      ([category, sum]) => ({ category, total: sum })
+    );
 
-    return { total, byCategory };
+    return { total, byCategory, transactions, from, to };
   }
 }

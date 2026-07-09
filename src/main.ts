@@ -7,6 +7,9 @@ import { GenerateWeeklyReport } from "./application/usecases/GenerateWeeklyRepor
 import { ChannelAdapter } from "./domain/ports/ChannelAdapter";
 import { Parser } from "./domain/ports/Parser";
 import { TransactionRepository } from "./domain/ports/TransactionRepository";
+import { JwtTokenService } from "./infrastructure/auth/JwtTokenService";
+import { createHttpServer } from "./infrastructure/http/server";
+import { TokenService } from "./domain/ports/TokenService";
 
 // ---------------------------------------------------------------------------
 // Composition root: THIS IS THE ONLY FILE allowed to "new" concrete classes.
@@ -19,6 +22,8 @@ const repository: TransactionRepository = new SupabaseTransactionRepository(
   env.supabaseUrl,
   env.supabaseKey
 );
+
+const tokenService: TokenService = new JwtTokenService(env.reportTokenSecret);
 
 const recordTransaction = new RecordTransaction(parser, repository);
 const generateWeeklyReport = new GenerateWeeklyReport(repository);
@@ -45,10 +50,28 @@ export async function sendWeeklyReports(userIds: string[]): Promise<void> {
     const summary = await generateWeeklyReport.execute(userId);
     if (summary.total === 0) continue;
 
-    const url = `${env.webviewBaseUrl}?user_id=${userId}`;
-    await channelAdapter.sendLink(userId, url, "Xem báo cáo chi tiêu tuần này");
+    const token = tokenService.generateToken(userId);
+    const url = `${env.webviewBaseUrl}?token=${token}`;
+    await channelAdapter.sendText(
+      userId,
+      `Xem báo cáo chi tiêu tuần này: ${url}`
+    );
   }
 }
+
+// Expose the API the React webview calls (GET /api/report?token=xxx),
+// running alongside the bot in the same process.
+const httpServer = createHttpServer(
+  generateWeeklyReport,
+  tokenService,
+  repository,
+  env.corsOrigin,
+  env.cronSecret,
+  sendWeeklyReports
+);httpServer.listen(env.port, () => {
+  console.log(`API server listening on port ${env.port}`);
+});
+
 
 channelAdapter.start().then(() => {
   console.log("Bot is running.");

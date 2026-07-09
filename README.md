@@ -37,6 +37,7 @@ three layers, and it wires them together.
 - [x] Infrastructure: `RegexParser` (amount + category detection for Vietnamese text)
 - [x] Infrastructure: `TelegramAdapter` (polling mode, ready for local dev/testing)
 - [x] Infrastructure: `SupabaseTransactionRepository` + SQL schema (`sql/schema.sql`)
+- [x] `scripts/migrate.ts` - applies the schema via `npm run migrate` (no need for the Supabase SQL editor)
 - [x] Composition root (`main.ts`) wiring everything together, with a friendly
       fallback reply when a message can't be parsed
 - [ ] Weekly report webview (a page that reads `user_id` from the URL and
@@ -53,10 +54,10 @@ page + the scheduled job that sends it, and the production deploy.
 ## How to run this locally
 
 1. **Install dependencies**
-   ```bash
+```bash
    cd micro-finance-bot
    npm install
-   ```
+```
 
 2. **Create a Telegram bot and get a token**
    - Open Telegram, message `@BotFather`, send `/newbot`, follow the prompts
@@ -64,52 +65,62 @@ page + the scheduled job that sends it, and the production deploy.
 
 3. **Create a Supabase project**
    - Go to supabase.com, create a new project
-   - In the SQL editor, run the contents of `sql/schema.sql`
    - Get your project URL and `service_role` key from Project settings > API
+   - Get your `DATABASE_URL` from Project settings > Database > Connection
+     string > URI (Session pooler is recommended)
 
 4. **Set environment variables**
-   ```bash
+```bash
    cp .env.example .env
-   ```
+```
    Edit `.env` and fill in:
-   ```
+```
    TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
    SUPABASE_URL=https://xxxx.supabase.co
    SUPABASE_SERVICE_KEY=your_supabase_service_role_key
    WEBVIEW_BASE_URL=http://localhost:3000/report
-   ```
+   DATABASE_URL=postgresql://postgres.xxxx:your_db_password@aws-0-region.pooler.supabase.com:5432/postgres
+```
 
-5. **Run in dev mode**
-   ```bash
+5. **Apply the database schema**
+```bash
+   npm run migrate
+```
+   This runs `sql/schema.sql` directly against your database — no need to
+   open the Supabase SQL editor. It's safe to re-run any time (the SQL uses
+   `if not exists`, so it won't error or duplicate tables on repeat runs).
+
+6. **Run in dev mode**
+```bash
    npm run dev
-   ```
+```
    You should see `Bot is running.` in the console.
 
-6. **Test it**
+7. **Test it**
    - Open your bot in Telegram, send it a message like `ăn trưa 50k`
    - The bot should reply confirming the amount + category
    - Check the `transactions` table in Supabase to confirm the row was saved
 
-7. **Build for production**
-   ```bash
+8. **Build for production**
+```bash
    npm run build   # compiles TypeScript to dist/
    npm start       # runs dist/main.js
-   ```
+```
 
 ## How to swap to an AI parser (without touching the use case)
 
 1. Create `src/infrastructure/parsers/AIParser.ts` implementing `Parser`:
-   ```ts
+```ts
    export class AIParser implements Parser {
      async parse(text: string): Promise<ParsedExpense | null> { ... }
    }
-   ```
+```
 2. In `main.ts`, change:
-   ```ts
+```ts
    const parser: Parser = new RegexParser();
    // to
    const parser: Parser = new AIParser(apiKey);
-   ```
+```
    No changes needed in `RecordTransaction`, `TelegramAdapter`, or the database layer.
 
 ## How to add Zalo (without touching the use case or parser)

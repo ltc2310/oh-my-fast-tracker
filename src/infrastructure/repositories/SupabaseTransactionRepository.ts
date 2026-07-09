@@ -56,4 +56,13 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       createdAt: new Date(row.created_at),
     }));
   }
+
+  async findDistinctUserIds(): Promise<string[]> {
+    const { data, error } = await this.client.from("transactions").select("user_id");
+
+    if (error) throw new Error(`Failed to fetch user ids: ${error.message}`);
+
+    const uniqueIds = new Set((data ?? []).map((row) => row.user_id as string));
+    return Array.from(uniqueIds);
+  }
 }
