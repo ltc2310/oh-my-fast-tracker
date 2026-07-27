@@ -1,141 +1,138 @@
-# Micro finance bot - Clean Architecture
+# Oh My Fast Tracker
 
-A chat bot that tracks expenses. Users type something like "ăn trưa 50k"
-(lunch 50k) and the bot parses the amount + category and saves it to Supabase.
+A Telegram chatbot that tracks personal expenses using natural Vietnamese language. Powered by NestJS, Supabase, and Google Gemini AI.
 
-## Folder structure (4 Clean Architecture layers)
+Type something like `ăn trưa 50k` and the bot parses the amount, detects the category, and saves it. Ask for a report anytime by typing `báo cáo`.
+
+## Features
+
+- **Natural Vietnamese input** — "ăn sáng 70k, grab 30k, gửi xe 10k" records 3 transactions at once
+- **AI-powered categorization** — Hybrid parser: keyword-based regex for speed, Gemini Flash AI fallback for semantic understanding (e.g. "đi chợ" → Ăn uống)
+- **Past date support** — "hôm qua rửa xe 25k" saves with yesterday's `spent_at`
+- **Flexible reporting** — "báo cáo tuần trước", "chi tiêu tháng này", "từ 1/6 đến 30/6"
+- **Report webview** — generates a link with chart + detailed table + Excel export
+- **13 Vietnamese categories** — Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Thu nhập, Khác
+
+## Architecture
+
+NestJS + Clean Architecture (domain → application → infrastructure).
 
 ```
 src/
-  domain/                  <- Depends on nothing else
-    entities/               Transaction
-    ports/                  ChannelAdapter, Parser, TransactionRepository (interfaces)
+  domain/           ← Pure interfaces, no dependencies
+    entities/         Transaction, WeeklySummary
+    ports/            ChannelAdapter, Parser, TokenService, TransactionRepository
 
-  application/               <- Only depends on domain/ports, knows nothing
-    usecases/                  about Telegram, Supabase, or Regex specifically
-      RecordTransaction.ts
-      GenerateWeeklyReport.ts
+  application/      ← Use cases, depends only on domain ports
+    usecases/
+      RecordTransaction.ts      parse + save expense(s)
+      GenerateWeeklyReport.ts   aggregate by date range
 
-  infrastructure/            <- Concrete implementation for each port
-    channels/TelegramAdapter.ts     implements ChannelAdapter
-    parsers/RegexParser.ts          implements Parser
-    repositories/SupabaseTransactionRepository.ts   implements TransactionRepository
-    config/env.ts
+  infrastructure/   ← Concrete implementations
+    auth/             JwtTokenService
+    channels/         TelegramAdapter, BotService (message routing)
+    config/           NestJS ConfigModule (app, telegram, supabase, auth, ai)
+    parsers/          RegexParser, AIParser, HybridParser
+    repositories/     SupabaseTransactionRepository
+    http/
+      controllers/    HealthController, ReportController
+      http.module.ts
 
-  main.ts                  <- Composition root: the ONLY place that "new"s concrete classes
+  app.module.ts     ← Root NestJS module
+  main.ts           ← Bootstrap
 ```
 
-Dependency rule: `domain` imports nothing from `application`/`infrastructure`.
-`application` only imports from `domain`. `infrastructure` implements the
-interfaces defined in `domain`. `main.ts` is the only file aware of all
-three layers, and it wires them together.
+## How it works
 
-## Status - what's done so far
+```
+User message → TelegramAdapter → BotService
+  ├─ Report request? → GenerateWeeklyReport → send summary + link
+  └─ Expense?        → HybridParser → RecordTransaction → save to Supabase
+                          ├─ RegexParser (fast, free, keywords)
+                          └─ AIParser (Gemini Flash, semantic fallback)
+```
 
-- [x] Domain layer: `Transaction` entity + 3 ports (`ChannelAdapter`, `Parser`, `TransactionRepository`)
-- [x] Application layer: `RecordTransaction` and `GenerateWeeklyReport` use cases
-- [x] Infrastructure: `RegexParser` (amount + category detection for Vietnamese text)
-- [x] Infrastructure: `TelegramAdapter` (polling mode, ready for local dev/testing)
-- [x] Infrastructure: `SupabaseTransactionRepository` + SQL schema (`sql/schema.sql`)
-- [x] `scripts/migrate.ts` - applies the schema via `npm run migrate` (no need for the Supabase SQL editor)
-- [x] Composition root (`main.ts`) wiring everything together, with a friendly
-      fallback reply when a message can't be parsed
-- [ ] Weekly report webview (a page that reads `user_id` from the URL and
-      renders a chart) - **not built yet**, only the `GenerateWeeklyReport`
-      use case and `sendWeeklyReports` function exist
-- [ ] Cron job to actually call `sendWeeklyReports` on a schedule - not wired up yet
-- [ ] Deployment to Render/Railway - not done yet
-- [ ] `AIParser` / `ZaloAdapter` - not built (the interfaces are ready for them)
+## Setup
 
-In short: the bot can already receive a Telegram message, parse it, save it
-to Supabase, and reply — end to end. What's missing is the weekly report
-page + the scheduled job that sends it, and the production deploy.
+### Prerequisites
 
-## How to run this locally
+- Node.js 18+
+- A Telegram bot token (from @BotFather)
+- A Supabase project
+- A Google Gemini API key (from https://aistudio.google.com/apikey)
 
-1. **Install dependencies**
+### Install & run
+
 ```bash
-   cd micro-finance-bot
-   npm install
+npm install
+cp .env.example .env   # fill in all values
+npm run migrate        # apply SQL schema to Supabase
+npm run start:dev      # development with hot-reload
 ```
 
-2. **Create a Telegram bot and get a token**
-   - Open Telegram, message `@BotFather`, send `/newbot`, follow the prompts
-   - Copy the token it gives you
+### Environment variables
 
-3. **Create a Supabase project**
-   - Go to supabase.com, create a new project
-   - Get your project URL and `service_role` key from Project settings > API
-   - Get your `DATABASE_URL` from Project settings > Database > Connection
-     string > URI (Session pooler is recommended)
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token from BotFather |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Supabase service role key |
+| `DATABASE_URL` | PostgreSQL connection string (for migrations) |
+| `REPORT_TOKEN_SECRET` | Secret for signing report JWT tokens |
+| `WEBVIEW_BASE_URL` | URL of the expense-report-web frontend |
+| `CORS_ORIGIN` | Allowed CORS origin for the API |
+| `PORT` | API server port (default: 3000) |
+| `GEMINI_API_KEY` | Google Gemini API key |
+| `GEMINI_MODEL` | Gemini model (default: gemini-3.5-flash-lite) |
 
-4. **Set environment variables**
+### Database schema
+
+```sql
+transactions (
+  id          uuid PRIMARY KEY,
+  user_id     text NOT NULL,
+  amount      numeric NOT NULL,
+  category    text NOT NULL,
+  note        text,
+  spent_at    timestamptz NOT NULL DEFAULT now(),  -- actual spending date
+  created_at  timestamptz NOT NULL DEFAULT now()   -- record creation date
+)
+```
+
+## Bot commands (via chat)
+
+| Message | Action |
+|---------|--------|
+| `ăn trưa 50k` | Record expense (today) |
+| `hôm qua grab 30k` | Record expense (yesterday) |
+| `3 ngày trước cafe 25k` | Record expense (3 days ago) |
+| `ăn sáng 70k, rửa xe 30k` | Record multiple expenses |
+| `báo cáo` | Report last 7 days |
+| `báo cáo tuần trước` | Report previous week |
+| `chi tiêu tháng này` | Report current month |
+| `chi tiêu tháng trước` | Report previous month |
+| `chi tiêu 3 ngày qua` | Report last 3 days |
+| `chi tiêu từ 1/6 đến 30/6` | Report specific date range |
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| GET | `/api/report?token=xxx` | Get report data (used by webview) |
+
+## Testing
+
 ```bash
-   cp .env.example .env
-```
-   Edit `.env` and fill in:
-```
-   TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
-   SUPABASE_URL=https://xxxx.supabase.co
-   SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-   WEBVIEW_BASE_URL=http://localhost:3000/report
-   DATABASE_URL=postgresql://postgres.xxxx:your_db_password@aws-0-region.pooler.supabase.com:5432/postgres
+npm test              # run all tests
+npm run test:watch    # watch mode
 ```
 
-5. **Apply the database schema**
-```bash
-   npm run migrate
-```
-   This runs `sql/schema.sql` directly against your database — no need to
-   open the Supabase SQL editor. It's safe to re-run any time (the SQL uses
-   `if not exists`, so it won't error or duplicate tables on repeat runs).
+## Roadmap
 
-6. **Run in dev mode**
-```bash
-   npm run dev
-```
-   You should see `Bot is running.` in the console.
-
-7. **Test it**
-   - Open your bot in Telegram, send it a message like `ăn trưa 50k`
-   - The bot should reply confirming the amount + category
-   - Check the `transactions` table in Supabase to confirm the row was saved
-
-8. **Build for production**
-```bash
-   npm run build   # compiles TypeScript to dist/
-   npm start       # runs dist/main.js
-```
-
-## How to swap to an AI parser (without touching the use case)
-
-1. Create `src/infrastructure/parsers/AIParser.ts` implementing `Parser`:
-```ts
-   export class AIParser implements Parser {
-     async parse(text: string): Promise<ParsedExpense | null> { ... }
-   }
-```
-2. In `main.ts`, change:
-```ts
-   const parser: Parser = new RegexParser();
-   // to
-   const parser: Parser = new AIParser(apiKey);
-```
-   No changes needed in `RecordTransaction`, `TelegramAdapter`, or the database layer.
-
-## How to add Zalo (without touching the use case or parser)
-
-1. Create `src/infrastructure/channels/ZaloAdapter.ts` implementing
-   `ChannelAdapter` with the same 4 methods: `onMessage`, `sendText`,
-   `sendLink`, `start`.
-2. In `main.ts`, either swap the `channelAdapter` initialization to
-   `ZaloAdapter`, or initialize both and run them side by side for
-   multi-channel support.
-
-## Deploying (Render/Railway)
-
-- Build command: `npm install && npm run build`
-- Start command: `npm start`
-- Set the environment variables in the Render/Railway dashboard
-- For production, switch `TelegramAdapter` from polling to webhook mode
-  to avoid Telegram's rate limits on continuous polling.
+- [ ] **Category budget limits** — set a monthly spending cap per category (e.g. "tháng này ăn uống tối đa 5tr"). When exceeded, bot sends a notification: "Bạn đã chi vượt mức Ăn uống tháng này (5.2tr / 5tr)"
+- [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows a bar chart comparing spending by category between two months, with a list of categories that increased
+- [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
+- [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
+- [ ] **AI Parser improvements** — better handling of slang, abbreviations, mixed language
+- [ ] **Production deployment** — Render/Railway with webhook mode for Telegram

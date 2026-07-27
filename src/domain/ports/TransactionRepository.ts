@@ -10,5 +10,3 @@ export interface TransactionRepository {
   /** Distinct list of every user who has at least one transaction. */
   findDistinctUserIds(): Promise<string[]>;
 }
-
-
