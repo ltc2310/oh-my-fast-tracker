@@ -1,29 +1,40 @@
-import { Parser, ParsedExpense } from "../../domain/ports/Parser";
+import { Injectable, Inject } from "@nestjs/common";
+import { Parser } from "../../domain/ports/Parser";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { Transaction } from "../../domain/entities/Transaction";
 
 /**
  * This use case only depends on two interfaces (Parser, TransactionRepository)
- * and knows nothing about Regex, Supabase, or Telegram. Testing is simple:
- * inject a fake Parser + fake Repository, no need to mock HTTP or a real DB.
+ * and knows nothing about Regex, Supabase, or Telegram.
+ *
+ * Supports multi-transaction messages: "ăn sáng 50k, grab 30k" → 2 transactions.
  */
+@Injectable()
 export class RecordTransaction {
   constructor(
-    private readonly parser: Parser,
-    private readonly repository: TransactionRepository
+    @Inject("Parser") private readonly parser: Parser,
+    @Inject("TransactionRepository") private readonly repository: TransactionRepository
   ) {}
 
-  async execute(userId: string, rawText: string): Promise<Transaction | null> {
-    const parsed: ParsedExpense | null = this.parser.parse(rawText);
-    if (!parsed) return null;
+  async execute(userId: string, rawText: string): Promise<Transaction[]> {
+    const parsed = await this.parser.parse(rawText);
+    if (!parsed || parsed.length === 0) return [];
 
-    const transaction: Transaction = {
-      userId,
-      amount: parsed.amount,
-      category: parsed.category,
-      note: parsed.note,
-    };
+    const saved: Transaction[] = [];
 
-    return this.repository.save(transaction);
+    for (const item of parsed) {
+      const transaction: Transaction = {
+        userId,
+        amount: item.amount,
+        category: item.category,
+        note: item.note,
+        spentAt: item.date ?? new Date(),
+      };
+
+      const result = await this.repository.save(transaction);
+      saved.push(result);
+    }
+
+    return saved;
   }
 }

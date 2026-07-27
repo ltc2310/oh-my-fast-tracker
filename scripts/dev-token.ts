@@ -1,6 +1,5 @@
 import "dotenv/config";
-import { JwtTokenService } from "../src/infrastructure/auth/JwtTokenService";
-import { env } from "../src/infrastructure/config/env";
+import jwt from "jsonwebtoken";
 
 // Dev-only helper: prints a valid webview link for a given Telegram chat id,
 // so you can test the frontend before the weekly cron job is wired up.
@@ -12,7 +11,13 @@ if (!userId) {
   process.exit(1);
 }
 
-const tokenService = new JwtTokenService(env.reportTokenSecret);
-const token = tokenService.generateToken(userId);
+const secret = process.env.REPORT_TOKEN_SECRET;
+if (!secret) {
+  console.error("Missing REPORT_TOKEN_SECRET in .env");
+  process.exit(1);
+}
 
-console.log(`${env.webviewBaseUrl}?token=${token}`);
+const webviewBaseUrl = process.env.WEBVIEW_BASE_URL ?? "http://localhost:3000/report";
+const token = jwt.sign({ sub: userId }, secret, { expiresIn: "7d" });
+
+console.log(`${webviewBaseUrl}?token=${token}`);

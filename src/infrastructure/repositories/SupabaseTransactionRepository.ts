@@ -1,23 +1,32 @@
+import { Injectable, Inject } from "@nestjs/common";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Transaction } from "../../domain/entities/Transaction";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
+import { ConfigType } from "@nestjs/config";
+import { supabaseConfig } from "../config/app.config";
 
+@Injectable()
 export class SupabaseTransactionRepository implements TransactionRepository {
   private readonly client: SupabaseClient;
 
-  constructor(url: string, apiKey: string) {
-    this.client = createClient(url, apiKey);
+  constructor(
+    @Inject(supabaseConfig.KEY) private readonly config: ConfigType<typeof supabaseConfig>
+  ) {
+    this.client = createClient(config.url, config.key);
   }
 
   async save(transaction: Transaction): Promise<Transaction> {
+    const row: Record<string, unknown> = {
+      user_id: transaction.userId,
+      amount: transaction.amount,
+      category: transaction.category,
+      note: transaction.note,
+      spent_at: (transaction.spentAt ?? new Date()).toISOString(),
+    };
+
     const { data, error } = await this.client
       .from("transactions")
-      .insert({
-        user_id: transaction.userId,
-        amount: transaction.amount,
-        category: transaction.category,
-        note: transaction.note,
-      })
+      .insert(row)
       .select()
       .single();
 
@@ -29,6 +38,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       amount: data.amount,
       category: data.category,
       note: data.note,
+      spentAt: new Date(data.spent_at),
       createdAt: new Date(data.created_at),
     };
   }
@@ -38,12 +48,14 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     from: Date,
     to: Date
   ): Promise<Transaction[]> {
+    // Query by spent_at (actual spending date), not created_at
     const { data, error } = await this.client
       .from("transactions")
       .select("*")
       .eq("user_id", userId)
-      .gte("created_at", from.toISOString())
-      .lte("created_at", to.toISOString());
+      .gte("spent_at", from.toISOString())
+      .lte("spent_at", to.toISOString())
+      .order("spent_at", { ascending: false });
 
     if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
@@ -53,6 +65,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       amount: row.amount,
       category: row.category,
       note: row.note,
+      spentAt: new Date(row.spent_at),
       createdAt: new Date(row.created_at),
     }));
   }

@@ -1,31 +1,42 @@
+import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import TelegramBot from "node-telegram-bot-api";
 import { ChannelAdapter, IncomingMessage } from "../../domain/ports/ChannelAdapter";
+import { ConfigType } from "@nestjs/config";
+import { telegramConfig } from "../config/app.config";
 
 /**
- * Current implementation of the ChannelAdapter interface.
- * This is the second swap point: write a ZaloAdapter that implements
- * the same interface when you need to expand — no changes needed in
- * any use case or parser.
+ * Telegram implementation of the ChannelAdapter interface.
+ * Uses NestJS OnModuleInit lifecycle hook to start polling automatically.
  */
-export class TelegramAdapter implements ChannelAdapter {
+@Injectable()
+export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
+  private readonly logger = new Logger(TelegramAdapter.name);
   private readonly bot: TelegramBot;
+  private messageHandler?: (msg: IncomingMessage) => Promise<void>;
 
-  constructor(token: string) {
-    // polling: true is convenient for MVP / local development.
-    // For production, switch to polling: false + bot.setWebHook(url).
-    this.bot = new TelegramBot(token, { polling: true });
+  constructor(
+    @Inject(telegramConfig.KEY) private readonly config: ConfigType<typeof telegramConfig>
+  ) {
+    this.bot = new TelegramBot(config.token, { polling: true });
   }
 
-  onMessage(handler: (msg: IncomingMessage) => Promise<void>): void {
+  onModuleInit() {
     this.bot.on("message", async (msg) => {
       if (!msg.text || !msg.chat?.id) return;
+      if (!this.messageHandler) return;
 
-      await handler({
+      await this.messageHandler({
         userId: String(msg.chat.id),
         channel: "telegram",
         text: msg.text,
       });
     });
+
+    this.logger.log("Telegram bot is running (polling mode).");
+  }
+
+  onMessage(handler: (msg: IncomingMessage) => Promise<void>): void {
+    this.messageHandler = handler;
   }
 
   async sendText(userId: string, text: string): Promise<void> {

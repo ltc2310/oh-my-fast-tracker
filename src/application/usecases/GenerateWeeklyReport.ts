@@ -1,19 +1,31 @@
+import { Injectable, Inject } from "@nestjs/common";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { WeeklySummary } from "../../domain/entities/WeeklySummary";
 
+export interface DateRange {
+  from: Date;
+  to: Date;
+}
+
+@Injectable()
 export class GenerateWeeklyReport {
-  constructor(private readonly repository: TransactionRepository) { }
+  constructor(
+    @Inject("TransactionRepository") private readonly repository: TransactionRepository
+  ) {}
 
-  async execute(userId: string): Promise<WeeklySummary> {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(to.getDate() - 7);
+  /**
+   * Generate a report for a given date range.
+   * If no range is provided, defaults to the last 7 days.
+   */
+  async execute(userId: string, range?: DateRange): Promise<WeeklySummary> {
+    const to = range?.to ?? new Date();
+    const from = range?.from ?? (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      return d;
+    })();
 
-    const transactions = await this.repository.findByUserAndDateRange(
-      userId,
-      from,
-      to
-    );
+    const transactions = await this.repository.findByUserAndDateRange(userId, from, to);
 
     const totalsByCategory = new Map<string, number>();
     let total = 0;
