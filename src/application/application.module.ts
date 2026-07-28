@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { RecordTransaction } from "./usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "./usecases/GenerateWeeklyReport";
+import { ExcelGeneratorService } from "./services/ExcelGeneratorService";
 
 /**
  * Application module only declares use cases as providers.
@@ -9,7 +10,7 @@ import { GenerateWeeklyReport } from "./usecases/GenerateWeeklyReport";
  * imports ApplicationModule, or made global.
  */
 @Module({
-  providers: [RecordTransaction, GenerateWeeklyReport],
-  exports: [RecordTransaction, GenerateWeeklyReport],
+  providers: [RecordTransaction, GenerateWeeklyReport, ExcelGeneratorService],
+  exports: [RecordTransaction, GenerateWeeklyReport, ExcelGeneratorService],
 })
 export class ApplicationModule {}

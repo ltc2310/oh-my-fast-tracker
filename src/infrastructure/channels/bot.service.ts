@@ -111,7 +111,7 @@ export class BotService implements OnModuleInit {
       if (transactions.length === 0) {
         await this.channelAdapter.sendText(
           message.userId,
-          'Mình chưa nhận diện được số tiền. Thử gõ dạng: "ăn trưa 50k" nhé.\n\nGõ "báo cáo" để xem chi tiêu tuần này.'
+          'Em chưa nhận diện được số tiền. Sếp thử gõ dạng: "ăn trưa 50k" nhé.\n\nGõ "báo cáo" để xem chi tiêu tuần này.'
         );
         return;
       }
@@ -121,7 +121,7 @@ export class BotService implements OnModuleInit {
         const prefix = formatSpentPrefix(t.spentAt);
         await this.channelAdapter.sendText(
           message.userId,
-          `✓ ${prefix}${t.amount.toLocaleString("vi-VN")}đ - ${t.category}`
+          `Em đã ghi nhận ${prefix}${t.amount.toLocaleString("vi-VN")}đ - ${t.category}`
         );
         return;
       }
@@ -136,7 +136,7 @@ export class BotService implements OnModuleInit {
 
       await this.channelAdapter.sendText(
         message.userId,
-        `✓ Đã ghi nhận ${transactions.length} khoản:\n${lines.join("\n")}`
+        `Em đã ghi nhận ${transactions.length} khoản:\n${lines.join("\n")}`
       );
     });
   }
@@ -165,11 +165,13 @@ export class BotService implements OnModuleInit {
     );
 
     const reply = [
-      `📊 Chi tiêu ${formatDate(range.from)} → ${formatDate(range.to)}: ${summary.total.toLocaleString("vi-VN")}đ`,
+      `Đây là báo cáo chi tiêu ${formatDate(range.from)} → ${formatDate(range.to)}, e gửi sếp xem qua:`,
+      "",
+      `💰 Tổng: ${summary.total.toLocaleString("vi-VN")}đ`,
       "",
       ...lines,
       "",
-      `🔗 Xem chi tiết: ${url}`,
+      `🔗 Sếp có thể xem trực quan hơn tại đây: ${url}`,
     ].join("\n");
 
     this.logger.log(`[Report] user=${userId} → ${url}`);

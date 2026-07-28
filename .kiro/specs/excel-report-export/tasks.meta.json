@@ -1,0 +1,288 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create VND formatter utility": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225607818
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225619843
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225800527
+      }
+    ],
+    "1.2 Create filename formatter utility": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225607859
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225620683
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225801292
+      }
+    ],
+    "2.1 Create ExcelGeneratorService with header and summary sections": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225607891
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225815322
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226139245
+      }
+    ],
+    "2.2 Add transactions section to ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225607926
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226147893
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226630624
+      }
+    ],
+    "2.3 Add professional styling to ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608010
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226148691
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226631124
+      }
+    ],
+    "2.4 Add pie chart to ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608043
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226149488
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226632011
+      }
+    ],
+    "3. Checkpoint": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608078
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226986078
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785227035896
+      }
+    ],
+    "4.1 Create ExportController": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608111
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226661888
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226766906
+      }
+    ],
+    "4.2 Update ApplicationModule to export ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608144
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226662693
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226767479
+      }
+    ],
+    "4.3 Update HttpModule to register ExportController": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608176
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226663486
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226768238
+      }
+    ],
+    "4.4 Configure CORS for Content-Disposition header exposure": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608209
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226773928
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226828993
+      }
+    ],
+    "5. Checkpoint": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608242
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785227036362
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785227041642
+      }
+    ],
+    "6.1 Write unit tests for ExportController": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608276
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226840070
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226955341
+      }
+    ],
+    "6.2 Write unit tests for ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608311
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226840957
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226955881
+      }
+    ],
+    "7. Final checkpoint": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225608345
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785227046549
+      },
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785227051941
+      }
+    ],
+    "1. Create utility functions": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785225801326
+      }
+    ],
+    "2. Implement ExcelGeneratorService": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226632047
+      }
+    ],
+    "4. Implement ExportController and module wiring": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226829025
+      }
+    ],
+    "6. Write tests": [
+      {
+        "executionId": "ddd3b13b-8c79-45db-8b96-6efa709f98b1",
+        "chatSessionId": "sess_d1284553-4b2a-4f6f-b098-3d554f54dba4",
+        "timestamp": 1785226955972
+      }
+    ]
+  }
+}

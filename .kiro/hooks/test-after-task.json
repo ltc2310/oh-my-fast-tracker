@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run Tests After Task Completion",
+      "trigger": "PostTaskExec",
+      "description": "Runs the full test suite after a spec task is marked complete to catch regressions",
+      "action": {
+        "type": "command",
+        "command": "npx jest --runInBand --passWithNoTests 2>&1 | tail -20",
+        "timeout": 120
+      },
+      "enabled": false
+    }
+  ]
+}

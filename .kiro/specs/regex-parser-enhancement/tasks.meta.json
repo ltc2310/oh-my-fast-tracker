@@ -1,0 +1,214 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Install fast-check and add expanded keywords to RegexParser": [
+      {
+        "executionId": "e1de3a99-4090-4b89-8478-35e5c1fa2d8b",
+        "chatSessionId": "sess_c52bf745-81f2-424f-a397-a985121e36b7",
+        "timestamp": 1785213622567
+      },
+      {
+        "executionId": "e1de3a99-4090-4b89-8478-35e5c1fa2d8b",
+        "chatSessionId": "sess_c52bf745-81f2-424f-a397-a985121e36b7",
+        "timestamp": 1785213808549
+      }
+    ],
+    "1. Add fast-check dependency and expand category keywords": [
+      {
+        "executionId": "e1de3a99-4090-4b89-8478-35e5c1fa2d8b",
+        "chatSessionId": "sess_c52bf745-81f2-424f-a397-a985121e36b7",
+        "timestamp": 1785213808583
+      }
+    ],
+    "2.1 Create ABBREVIATION_MAP and expandAbbreviations function": [
+      {
+        "executionId": "15fe819f-651b-436a-ade6-f20f150653fc",
+        "chatSessionId": "sess_edbe090b-2128-409c-9611-6b89d08eec70",
+        "timestamp": 1785218542184
+      },
+      {
+        "executionId": "15fe819f-651b-436a-ade6-f20f150653fc",
+        "chatSessionId": "sess_edbe090b-2128-409c-9611-6b89d08eec70",
+        "timestamp": 1785218652483
+      }
+    ],
+    "2. Implement abbreviation expansion": [
+      {
+        "executionId": "15fe819f-651b-436a-ade6-f20f150653fc",
+        "chatSessionId": "sess_edbe090b-2128-409c-9611-6b89d08eec70",
+        "timestamp": 1785218652530
+      }
+    ],
+    "3.1 Create normalizeSpelling function": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705341
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218715569
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219476449
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705375
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219506457
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219542805
+      }
+    ],
+    "5.1 Create CONTEXTUAL_PATTERNS and detectContextualCategory function": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705411
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218715967
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219477291
+      }
+    ],
+    "6.1 Wire abbreviation expansion, normalization, and contextual matching into parsing flow": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705463
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219556221
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219729968
+      }
+    ],
+    "7. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705531
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219739287
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219768935
+      }
+    ],
+    "8.1 Create CROSS_SEGMENT_CONNECTORS and combineAdjacentSegments logic": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705567
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219777486
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220004960
+      }
+    ],
+    "9.1 Create example-based unit tests for abbreviation, normalization, and compound patterns": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705608
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220013628
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220524934
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785218705643
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220533449
+      },
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220621949
+      }
+    ],
+    "3. Implement spelling normalization": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219476484
+      }
+    ],
+    "5. Implement contextual pattern matching": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219477325
+      }
+    ],
+    "6. Integrate preprocessing pipeline into parseSingle": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785219730003
+      }
+    ],
+    "8. Implement cross-segment combination": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220004992
+      }
+    ],
+    "9. Write unit tests for new functionality": [
+      {
+        "executionId": "549c19aa-3af6-4946-9625-7309aff365a3",
+        "chatSessionId": "sess_655a6bc6-ad1b-485e-b992-ffa905be3ba0",
+        "timestamp": 1785220524974
+      }
+    ]
+  }
+}

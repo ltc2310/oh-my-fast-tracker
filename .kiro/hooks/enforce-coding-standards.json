@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Enforce Coding Standards",
+      "trigger": "PreToolUse",
+      "description": "Injects coding standards verification prompt before any file write operation",
+      "matcher": "fs_write|str_replace|fs_append",
+      "action": {
+        "type": "agent",
+        "prompt": "Before writing this file, verify the change follows these coding standards:\n1. Use clean architecture patterns (domain/application/infrastructure separation)\n2. All domain logic must be framework-agnostic (no NestJS decorators in domain layer)\n3. Use dependency injection via ports/interfaces defined in domain/ports\n4. Follow NestJS conventions for infrastructure layer (decorators, modules, providers)\n5. Use TypeScript strict typing - no `any` types without justification\n6. Async functions must have proper error handling\n7. Keep functions focused and under 30 lines where practical\n8. Use descriptive variable/function names (no single-letter names outside loops)\nIf the change violates any of these, suggest corrections before proceeding."
+      },
+      "enabled": false
+    }
+  ]
+}
