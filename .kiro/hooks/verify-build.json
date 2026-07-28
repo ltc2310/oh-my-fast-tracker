@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Verify Build After Changes",
+      "trigger": "PostFileSave",
+      "description": "Runs npm run build after any TypeScript file is saved to ensure the project compiles without errors",
+      "matcher": "\\.(ts|tsx)$",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/cgee/Desktop/personal/oh-my-fast-tracker && npm run build 2>&1",
+        "timeout": 120
+      },
+      "enabled": false
+    }
+  ]
+}

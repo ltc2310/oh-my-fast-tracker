@@ -1,0 +1,149 @@
+{
+  "pbtResults": {
+    "1. Write bug condition exploration test": {
+      "status": "passed",
+      "failingExample": "Counterexamples confirming the bug exists:\n1. parser.parse(\"trà sữa 50k\") → Expected: \"Ăn uống\", Received: \"Con cái\" — keyword \"sữa\" in \"Con cái\" (index 6) matches before \"trà sữa\" in \"Ăn uống\" (index 11) due to category iteration order.\n2. parser.parse(\"ts 30k\") → Expected: \"Ăn uống\", Received: \"Khác\" — \"ts\" not in ABBREVIATION_MAP, no expansion to \"trà sữa\", no keyword match, falls to default \"Khác\".\n3. parser.parse(\"uống trà sữa hết 35k\") → Expected: \"Ăn uống\", Received: \"Con cái\" — same root cause as #1, \"sữa\" substring matches in \"Con cái\" first.\n4. parser.parseWithConfidence(\"trà sữa 50k\") → confident=true, category \"Con cái\" instead of \"Ăn uống\" — confirms the bug in the full pipeline.",
+      "lastRunTimestamp": 1785223606287
+    },
+    "2. Write preservation property tests (BEFORE implementing fix)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785223864893
+    },
+    "3.3 Verify bug condition exploration test now passes": {
+      "status": "passed",
+      "lastRunTimestamp": 1785224218421
+    },
+    "3.4 Verify preservation tests still pass": {
+      "status": "passed",
+      "lastRunTimestamp": 1785224277958
+    }
+  },
+  "executionHistory": {
+    "1. Write bug condition exploration test": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223348879
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223358849
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223623817
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing fix)": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223348913
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223636142
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223881429
+      }
+    ],
+    "3.1 Add \"ts\" → \"trà sữa\" to ABBREVIATION_MAP": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223348946
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223898482
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223988465
+      }
+    ],
+    "3.2 Implement global longest-match logic in detectCategory": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223348981
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223996455
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224160429
+      }
+    ],
+    "3.3 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223349077
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224183095
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224230237
+      }
+    ],
+    "3.4 Verify preservation tests still pass": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223349110
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224237679
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224290402
+      }
+    ],
+    "4. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785223349146
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224299053
+      },
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224351706
+      }
+    ],
+    "3. Fix for \"trà sữa\" categorization bug": [
+      {
+        "executionId": "39b94e69-7227-40ed-8413-b696f43da504",
+        "chatSessionId": "sess_6ffafda4-737f-4e45-b785-006726853865",
+        "timestamp": 1785224290436
+      }
+    ]
+  }
+}

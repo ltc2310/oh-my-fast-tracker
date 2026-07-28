@@ -5,6 +5,7 @@ import { InfrastructureModule } from "../infrastructure.module";
 import { appConfig } from "../config/app.config";
 import { HealthController } from "./controllers/health.controller";
 import { ReportController } from "./controllers/report.controller";
+import { ExportController } from "./controllers/export.controller";
 import { BotService } from "../channels/bot.service";
 
 @Module({
@@ -13,7 +14,7 @@ import { BotService } from "../channels/bot.service";
     ApplicationModule,
     InfrastructureModule,
   ],
-  controllers: [HealthController, ReportController],
+  controllers: [HealthController, ReportController, ExportController],
   providers: [BotService],
 })
 export class HttpModule {}

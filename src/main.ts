@@ -9,7 +9,10 @@ async function bootstrap() {
   const port = configService.get<number>("PORT", 3000);
   const corsOrigin = configService.get<string>("CORS_ORIGIN", "*");
 
-  app.enableCors({ origin: corsOrigin });
+  app.enableCors({
+    origin: corsOrigin,
+    exposedHeaders: ['Content-Disposition'],
+  });
 
   await app.listen(port);
   console.log(`API server listening on port ${port}`);

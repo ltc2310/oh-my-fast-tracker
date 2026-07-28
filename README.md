@@ -7,10 +7,13 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 ## Features
 
 - **Natural Vietnamese input** — "ăn sáng 70k, grab 30k, gửi xe 10k" records 3 transactions at once
-- **AI-powered categorization** — Hybrid parser: keyword-based regex for speed, Gemini Flash AI fallback for semantic understanding (e.g. "đi chợ" → Ăn uống)
+- **Abbreviation & slang support** — "cf 30k" (cà phê), "dt 500k" (điện thoại), "ts 30k" (trà sữa), informal spellings like "fở" (phở), and English keywords like "lunch", "gym", "parking"
+- **AI-powered categorization** — Hybrid parser: enhanced keyword-based regex with abbreviation expansion, spelling normalization, emoji detection, and cross-segment linking for speed; Gemini Flash AI fallback for truly ambiguous cases
+- **Enhanced regex parser** — Abbreviation expansion (cf, cp, dt, bv, st, ks, nt, ts), spelling normalization (f→ph, z→gi, w→qu), contextual emoji matching, cross-segment combination with connector verbs (hết, tốn, mất, trả, chi, xài, tiêu), longest-match category detection
 - **Past date support** — "hôm qua rửa xe 25k" saves with yesterday's `spent_at`
 - **Flexible reporting** — "báo cáo tuần trước", "chi tiêu tháng này", "từ 1/6 đến 30/6"
-- **Report webview** — generates a link with chart + detailed table + Excel export
+- **Report webview** — generates a link with chart + detailed table
+- **Excel report export** — Professional Vietnamese financial report with pie chart, category breakdown, transaction details, and alternating row styling (via `GET /api/report/export`)
 - **13 Vietnamese categories** — Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Thu nhập, Khác
 
 ## Architecture
@@ -27,6 +30,10 @@ src/
     usecases/
       RecordTransaction.ts      parse + save expense(s)
       GenerateWeeklyReport.ts   aggregate by date range
+    services/
+      ExcelGeneratorService.ts  generate .xlsx reports
+      filename-formatter.ts     format export filenames
+      vnd-formatter.ts          format VND currency strings
 
   infrastructure/   ← Concrete implementations
     auth/             JwtTokenService
@@ -35,7 +42,7 @@ src/
     parsers/          RegexParser, AIParser, HybridParser
     repositories/     SupabaseTransactionRepository
     http/
-      controllers/    HealthController, ReportController
+      controllers/    HealthController, ReportController, ExportController
       http.module.ts
 
   app.module.ts     ← Root NestJS module
@@ -83,7 +90,12 @@ npm run start:dev      # development with hot-reload
 | `CORS_ORIGIN` | Allowed CORS origin for the API |
 | `PORT` | API server port (default: 3000) |
 | `GEMINI_API_KEY` | Google Gemini API key |
-| `GEMINI_MODEL` | Gemini model (default: gemini-3.5-flash-lite) |
+| `GEMINI_MODEL` | Gemini model (default: gemini-2.0-flash-lite) |
+| `SMTP_HOST` | SMTP server hostname (planned: email delivery) |
+| `SMTP_PORT` | SMTP server port (planned: email delivery) |
+| `SMTP_USER` | SMTP username (planned: email delivery) |
+| `SMTP_PASS` | SMTP password (planned: email delivery) |
+| `SMTP_FROM` | Sender email address (planned: email delivery) |
 
 ### Database schema
 
@@ -113,6 +125,15 @@ transactions (
 | `chi tiêu tháng trước` | Report previous month |
 | `chi tiêu 3 ngày qua` | Report last 3 days |
 | `chi tiêu từ 1/6 đến 30/6` | Report specific date range |
+| `cf 30k` | Abbreviation: cà phê → Ăn uống |
+| `ts 30k` | Abbreviation: trà sữa → Ăn uống |
+| `dt 500k` | Abbreviation: điện thoại → Tiện ích |
+| `fở 50k` | Informal spelling (phở → Ăn uống) |
+| `lunch 50k` | English keyword → Ăn uống |
+| `đi ăn, hết 200k` | Cross-segment: keyword + connector verb + amount |
+| `gửi báo cáo` | Send report via email (planned) |
+| `định mức ăn uống 5tr` | Set category budget limit (planned) |
+| `xem định mức` | View budget status (planned) |
 
 ## API Endpoints
 
@@ -120,19 +141,20 @@ transactions (
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | GET | `/api/report?token=xxx` | Get report data (used by webview) |
+| GET | `/api/report/export?token=xxx` | Download Excel report (.xlsx) |
 
 ## Testing
 
 ```bash
-npm test              # run all tests
+npm test              # run all tests (182 tests across 9 suites)
 npm run test:watch    # watch mode
 ```
 
 ## Roadmap
 
-- [ ] **Category budget limits** — set a monthly spending cap per category (e.g. "tháng này ăn uống tối đa 5tr"). When exceeded, bot sends a notification: "Bạn đã chi vượt mức Ăn uống tháng này (5.2tr / 5tr)"
-- [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows a bar chart comparing spending by category between two months, with a list of categories that increased
+- [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
+- [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec in progress)*
+- [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
 - [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
 - [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
-- [ ] **AI Parser improvements** — better handling of slang, abbreviations, mixed language
 - [ ] **Production deployment** — Render/Railway with webhook mode for Telegram

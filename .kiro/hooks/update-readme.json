@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Update README on Session End",
+      "trigger": "Stop",
+      "description": "Prompts the agent to update documentation when a session ends",
+      "action": {
+        "type": "agent",
+        "prompt": "Before ending this session, review the changes made and update the README.md to reflect any new features, configuration changes, or architectural updates. Keep the README concise and developer-friendly. Only update if meaningful changes were made to the project's functionality or setup."
+      },
+      "enabled": false
+    }
+  ]
+}

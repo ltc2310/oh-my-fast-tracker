@@ -6,6 +6,14 @@ const config: Config = {
   rootDir: ".",
   testMatch: ["<rootDir>/test/**/*.spec.ts"],
   moduleFileExtensions: ["ts", "js", "json"],
+  globals: {
+    "ts-jest": {
+      tsconfig: {
+        types: ["jest", "node"],
+        rootDir: ".",
+      },
+    },
+  },
 };
 
 export default config;
