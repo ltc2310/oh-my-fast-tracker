@@ -101,6 +101,12 @@ export class BotService implements OnModuleInit {
 
   onModuleInit() {
     this.channelAdapter.onMessage(async (message) => {
+      // Debug: respond with user's chat ID
+      if (/^id$/i.test(message.text.trim())) {
+        await this.channelAdapter.sendText(message.userId, `Your ID: ${message.userId}`);
+        return;
+      }
+
       if (REPORT_REGEX.test(message.text)) {
         await this.handleReportRequest(message.userId, message.text);
         return;

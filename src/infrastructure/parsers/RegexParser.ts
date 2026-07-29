@@ -37,8 +37,7 @@ const CATEGORY_KEYWORDS: [string, string[]][] = [
     "gym",
   ]],
   ["Con cái", [
-    "học phí con", "đồ chơi", "trẻ em", "em bé",
-    "sữa", "bỉm", "tã",
+    "học phí con", "đồ chơi", "trẻ em", "em bé", "bỉm", "tã", "con",
   ]],
   ["Chi phí cố định", [
     "phí dịch vụ", "bảo hiểm", "trả góp", "nợ",
@@ -67,7 +66,7 @@ const CATEGORY_KEYWORDS: [string, string[]][] = [
     "bữa sáng", "bữa trưa", "bữa tối",
     "nước ngọt", "thực phẩm", "trái cây", "hoa quả",
     "hủ tiếu", "siêu thị", "sinh tố", "bánh mì",
-    "trà sữa", "trà đá", "cà phê", "đồ ăn",
+    "trà sữa", "trà đá", "cà phê", "đồ ăn", "sữa",
     "cafe", "nhậu", "bánh", "phở", "cơm", "bún",
     "lẩu", "nấu", "thịt", "rau", "bia", "chợ", "chè",
     "trà", "mì", "ăn",
