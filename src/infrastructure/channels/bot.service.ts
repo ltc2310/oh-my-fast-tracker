@@ -3,11 +3,17 @@ import { ConfigType } from "@nestjs/config";
 import { ChannelAdapter } from "../../domain/ports/ChannelAdapter";
 import { RecordTransaction } from "../../application/usecases/RecordTransaction";
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
+import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
 import { TokenService } from "../../domain/ports/TokenService";
-import { Transaction } from "../../domain/entities/Transaction";
 import { appConfig } from "../config/app.config";
 
-/** Regex to detect report request messages */
+/** Regex to detect trend report request messages (must be checked BEFORE REPORT_REGEX) */
+const TREND_REPORT_REGEX = /báo\s*cáo\s*(?:chi\s*tiêu\s*)?(\d+)\s*tháng|xu\s*hướng\s*(?:chi\s*tiêu\s*)?(\d+)?\s*tháng|báo\s*cáo\s*xu\s*hướng/i;
+
+/** Regex to detect compare months requests (not yet supported) */
+const COMPARE_MONTHS_REGEX = /so\s*sánh\s*tháng\s*\d+\s*(?:với|và|vs)\s*tháng\s*\d+/i;
+
+/** Regex to detect existing weekly/monthly report request messages */
 const REPORT_REGEX = /báo\s*cáo|chi\s*tiêu\s*(tuần|tháng|ngày|\d)|report/i;
 
 /**
@@ -96,7 +102,8 @@ export class BotService implements OnModuleInit {
     @Inject("TokenService") private readonly tokenService: TokenService,
     @Inject(appConfig.KEY) private readonly config: ConfigType<typeof appConfig>,
     private readonly recordTransaction: RecordTransaction,
-    private readonly generateWeeklyReport: GenerateWeeklyReport
+    private readonly generateWeeklyReport: GenerateWeeklyReport,
+    private readonly generateTrendReport: GenerateTrendReport,
   ) {}
 
   onModuleInit() {
@@ -104,6 +111,23 @@ export class BotService implements OnModuleInit {
       // Debug: respond with user's chat ID
       if (/^id$/i.test(message.text.trim())) {
         await this.channelAdapter.sendText(message.userId, `Your ID: ${message.userId}`);
+        return;
+      }
+
+      // Check compare months pattern first (not yet supported)
+      if (COMPARE_MONTHS_REGEX.test(message.text)) {
+        await this.channelAdapter.sendText(
+          message.userId,
+          'Tính năng so sánh tháng chưa được hỗ trợ. Sếp thử dùng "báo cáo 6 tháng" để xem xu hướng chi tiêu nhé!'
+        );
+        return;
+      }
+
+      // Check trend report pattern (before general REPORT_REGEX)
+      const trendMatch = message.text.match(TREND_REPORT_REGEX);
+      if (trendMatch) {
+        const months = parseInt(trendMatch[1] || trendMatch[2], 10) || 6;
+        await this.handleTrendReportRequest(message.userId, months);
         return;
       }
 
@@ -181,6 +205,71 @@ export class BotService implements OnModuleInit {
     ].join("\n");
 
     this.logger.log(`[Report] user=${userId} → ${url}`);
+    await this.channelAdapter.sendText(userId, reply);
+  }
+
+  private async handleTrendReportRequest(userId: string, months: number): Promise<void> {
+    // Validate range at bot layer — send friendly message without calling use case
+    if (months < 3 || months > 12) {
+      await this.channelAdapter.sendText(
+        userId,
+        `Em chỉ hỗ trợ báo cáo xu hướng từ 3 đến 12 tháng. Sếp thử "báo cáo 6 tháng" nhé!`
+      );
+      return;
+    }
+
+    const report = await this.generateTrendReport.execute(userId, { months });
+
+    // Generate token for webview/export links
+    const token = this.tokenService.generateReportToken({
+      userId,
+      from: report.periodStart,
+      to: report.periodEnd,
+    });
+
+    const webviewLink = `${this.config.webviewBaseUrl}/trend?token=${token}`;
+
+    // Format direction text and icon
+    const directionMap: Record<string, string> = {
+      increasing: "↑ Tăng",
+      decreasing: "↓ Giảm",
+      stable: "→ Ổn định",
+    };
+    const directionText = directionMap[report.overview.overallDirection] ?? "→ Ổn định";
+
+    // Format period dates
+    const periodFrom = report.periodStart.slice(0, 7); // YYYY-MM
+    const periodTo = report.periodEnd.slice(0, 7);
+
+    // Build reply lines
+    const lines: string[] = [];
+
+    if (report.overview.hasIncompleteData) {
+      lines.push(`⚠️ Lưu ý: Chỉ có dữ liệu ${report.overview.monthsWithData}/${months} tháng, xu hướng có thể chưa chính xác.`);
+    }
+
+    lines.push(`📊 Xu hướng chi tiêu ${months} tháng qua (${periodFrom} - ${periodTo})`);
+    lines.push(`Tổng chi: ${report.overview.totalSpent.toLocaleString("vi-VN")}đ · TB: ${Math.round(report.overview.averageMonthlySpent).toLocaleString("vi-VN")}đ/tháng`);
+    lines.push(`${directionText.split(" ")[0]} Xu hướng: ${directionText.split(" ").slice(1).join(" ")} (${report.overview.overallChangePercent > 0 ? "+" : ""}${Math.round(report.overview.overallChangePercent)}% so với đầu kỳ)`);
+    lines.push(`📅 Tháng cao nhất: ${report.overview.highestMonth.month} (${report.overview.highestMonth.amount.toLocaleString("vi-VN")}đ)`);
+
+    // Top growing category
+    if (report.topGrowingCategories.length > 0) {
+      const top = report.topGrowingCategories[0];
+      lines.push(`🔺 Tăng mạnh nhất: ${top.category} (+${Math.round(top.changePercent)}%)`);
+    }
+
+    // Top shrinking category
+    if (report.topShrinkingCategories.length > 0) {
+      const top = report.topShrinkingCategories[0];
+      lines.push(`🔻 Giảm mạnh nhất: ${top.category} (${Math.round(top.changePercent)}%)`);
+    }
+
+    lines.push("");
+    lines.push(`👉 Sếp xem chi tiết đầy đủ: ${webviewLink}`);
+
+    const reply = lines.join("\n");
+    this.logger.log(`[TrendReport] user=${userId} months=${months} → ${webviewLink}`);
     await this.channelAdapter.sendText(userId, reply);
   }
 }
