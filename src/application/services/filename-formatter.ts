@@ -12,3 +12,15 @@ export function formatExportFilename(from: Date, to: Date): string {
 
   return `bao-cao-chi-tieu-${formatDate(from)}-${formatDate(to)}.xlsx`;
 }
+
+/**
+ * Formats the export filename for the trend report Excel file.
+ * Pattern: bao-cao-xu-huong-{userId}-{periodStart}-{periodEnd}.xlsx
+ */
+export function formatTrendExportFilename(
+  userId: string,
+  periodStart: string,
+  periodEnd: string,
+): string {
+  return `bao-cao-xu-huong-${userId}-${periodStart}-${periodEnd}.xlsx`;
+}

@@ -1,0 +1,469 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create MonthlyBreakdown entity": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298566850
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298577073
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298687168
+      }
+    ],
+    "1.2 Create CategoryTrend entity": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298566886
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298577846
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298687914
+      }
+    ],
+    "1.3 Create TrendReport entity": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298566947
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298578702
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298688686
+      }
+    ],
+    "2.1 Implement the half-period comparison algorithm": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298566986
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298864946
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299130627
+      }
+    ],
+    "2.2 Implement category trend analysis": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567024
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298865608
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299131450
+      }
+    ],
+    "3.1 Implement the use case with validation and data grouping": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567059
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299147492
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299474705
+      }
+    ],
+    "4. Checkpoint — Domain + Application layer": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567091
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299479847
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299519226
+      }
+    ],
+    "5.1 Implement Overview tab generation": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567132
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299535750
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299906687
+      }
+    ],
+    "5.2 Implement monthly detail tabs": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567165
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299536628
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299906653
+      }
+    ],
+    "5.3 Extend filename-formatter for trend report": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567198
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299537675
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299906950
+      }
+    ],
+    "6. Checkpoint — Excel generation": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567225
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299912761
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299949933
+      }
+    ],
+    "7.1 Implement the trend report API endpoint": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567288
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299970604
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300166589
+      }
+    ],
+    "7.2 Implement the trend export endpoint": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567317
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299971353
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300167706
+      }
+    ],
+    "8.1 Update ApplicationModule": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567350
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299972037
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300168164
+      }
+    ],
+    "8.2 Update HttpModule": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567376
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299972748
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300168868
+      }
+    ],
+    "9.1 Add trend report detection and routing to BotService": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567417
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300175449
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300460795
+      }
+    ],
+    "9.2 Implement handleTrendReportRequest": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567450
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300176191
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300461360
+      }
+    ],
+    "10. Checkpoint — Full integration": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567486
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300467147
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300511049
+      }
+    ],
+    "11.1 Write unit tests for TrendAnalysisService": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567518
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300516867
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300676159
+      }
+    ],
+    "11.2 Write unit tests for GenerateTrendReport": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567551
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300517573
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300676598
+      }
+    ],
+    "11.3 Write unit tests for TrendReportController": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567586
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300518371
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300677627
+      }
+    ],
+    "11.4 Write unit tests for ExcelTrendGeneratorService": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567635
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300519226
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300678209
+      }
+    ],
+    "11.5 Write unit tests for bot trend routing": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567670
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300519985
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300678999
+      }
+    ],
+    "12. Final checkpoint": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298567701
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300685173
+      },
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300785210
+      }
+    ],
+    "1. Create domain entities": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785298688721
+      }
+    ],
+    "2. Create TrendAnalysisService": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299131477
+      }
+    ],
+    "3. Create GenerateTrendReport use case": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299474774
+      }
+    ],
+    "5. Create ExcelTrendGeneratorService": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785299906997
+      }
+    ],
+    "7. Create TrendReportController": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300167783
+      }
+    ],
+    "8. Update module wiring": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300168900
+      }
+    ],
+    "9. Implement Telegram bot routing": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300461439
+      }
+    ],
+    "11. Write tests": [
+      {
+        "executionId": "f1078406-b205-4d71-97dd-068066fdfaf1",
+        "chatSessionId": "sess_6c763d06-267b-4da1-bdf4-f87a2afe607c",
+        "timestamp": 1785300679075
+      }
+    ]
+  }
+}
