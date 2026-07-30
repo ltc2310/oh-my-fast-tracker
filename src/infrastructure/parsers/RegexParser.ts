@@ -334,7 +334,7 @@ export function detectDate(text: string): Date | undefined {
   return undefined;
 }
 
-function detectCategory(text: string): string | null {
+export function detectCategory(text: string): string | null {
   const lower = text.toLowerCase();
   let bestCategory: string | null = null;
   let bestLength = 0;

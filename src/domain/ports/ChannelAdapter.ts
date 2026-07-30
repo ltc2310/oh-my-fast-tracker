@@ -2,7 +2,7 @@ export interface IncomingMessage {
   userId: string;
   channel: string;
   text: string;
-  username?: string | null;
+  username?: string;
 }
 
 /**

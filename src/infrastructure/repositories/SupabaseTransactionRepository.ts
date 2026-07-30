@@ -33,16 +33,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
 
     if (error) throw new Error(`Failed to save transaction: ${error.message}`);
 
-    return {
-      id: data.id,
-      userId: data.user_id,
-      amount: data.amount,
-      category: data.category,
-      note: data.note,
-      channel: data.channel,
-      spentAt: new Date(data.spent_at),
-      createdAt: new Date(data.created_at),
-    };
+    return this.mapRow(data);
   }
 
   async findByUserAndDateRange(
@@ -61,16 +52,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
 
     if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
-    return (data ?? []).map((row) => ({
-      id: row.id,
-      userId: row.user_id,
-      amount: row.amount,
-      category: row.category,
-      note: row.note,
-      channel: row.channel,
-      spentAt: new Date(row.spent_at),
-      createdAt: new Date(row.created_at),
-    }));
+    return (data ?? []).map((row) => this.mapRow(row));
   }
 
   async findDistinctUserIds(): Promise<string[]> {
@@ -80,5 +62,83 @@ export class SupabaseTransactionRepository implements TransactionRepository {
 
     const uniqueIds = new Set((data ?? []).map((row) => row.user_id as string));
     return Array.from(uniqueIds);
+  }
+
+  async findById(id: string): Promise<Transaction | null> {
+    const { data, error } = await this.client
+      .from("transactions")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null; // Row not found
+      throw new Error(`Failed to find transaction: ${error.message}`);
+    }
+
+    return this.mapRow(data);
+  }
+
+  async findLastByUser(userId: string): Promise<Transaction | null> {
+    const { data, error } = await this.client
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null; // No rows
+      throw new Error(`Failed to find last transaction: ${error.message}`);
+    }
+
+    return this.mapRow(data);
+  }
+
+  async update(
+    id: string,
+    fields: Partial<Pick<Transaction, 'amount' | 'category' | 'note' | 'spentAt'>>,
+  ): Promise<Transaction> {
+    const row: Record<string, unknown> = {};
+    if (fields.amount !== undefined) row.amount = fields.amount;
+    if (fields.category !== undefined) row.category = fields.category;
+    if (fields.note !== undefined) row.note = fields.note;
+    if (fields.spentAt !== undefined) row.spent_at = fields.spentAt.toISOString();
+
+    const { data, error } = await this.client
+      .from("transactions")
+      .update(row)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update transaction: ${error.message}`);
+
+    return this.mapRow(data);
+  }
+
+  async deleteById(id: string): Promise<boolean> {
+    const { error, count } = await this.client
+      .from("transactions")
+      .delete({ count: "exact" })
+      .eq("id", id);
+
+    if (error) throw new Error(`Failed to delete transaction: ${error.message}`);
+
+    return (count ?? 0) > 0;
+  }
+
+  private mapRow(row: Record<string, unknown>): Transaction {
+    return {
+      id: row.id as string,
+      userId: row.user_id as string,
+      amount: row.amount as number,
+      category: row.category as string,
+      note: row.note as string,
+      channel: row.channel as string,
+      spentAt: new Date(row.spent_at as string),
+      createdAt: new Date(row.created_at as string),
+    };
   }
 }

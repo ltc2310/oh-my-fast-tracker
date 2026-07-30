@@ -16,7 +16,9 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 - **Report webview** — generates a link with chart + detailed table
 - **Excel report export** — Professional Vietnamese financial report with pie chart, category breakdown, transaction details, and alternating row styling (via `GET /api/report/export`)
 - **Trend report** — Multi-month spending trend analysis (3–12 months) with half-period comparison algorithm, per-category trend detection (increasing/decreasing/stable), top growing/shrinking categories, and incomplete data warnings. Available via API JSON, Excel export (multi-tab workbook with overview + monthly detail tabs), and Telegram bot ("báo cáo 6 tháng", "xu hướng chi tiêu")
-- **13 Vietnamese categories** — Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Thu nhập, Khác
+- **14 Vietnamese categories** — Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Tiết kiệm & Đầu tư, Thu nhập, Khác
+- **Income tracking** — "lương 20tr", "thưởng 5tr" stored as negative amounts to separate income from expenses in reports
+- **Undo / Edit / Delete** — "xoá" removes last transaction, "sửa thành 30k" edits amount, "sửa thành ăn uống" changes category, "sửa ngày hôm qua" changes date, or combine: "sửa thành cà phê 25k hôm qua"
 
 ## Architecture
 
@@ -25,6 +27,7 @@ NestJS + Clean Architecture (domain → application → infrastructure).
 ```
 src/
   domain/           ← Pure interfaces, no dependencies
+    constants/        income-categories (income category set)
     entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport, User
     ports/            ChannelAdapter, Parser, TokenService, TransactionRepository, UserRepository, NotificationSender
 
@@ -33,6 +36,9 @@ src/
       RecordTransaction.ts      parse + save expense(s)
       GenerateWeeklyReport.ts   aggregate by date range
       GenerateTrendReport.ts    multi-month trend analysis
+      UndoLastTransaction.ts    delete most recent transaction
+      DeleteTransaction.ts      delete by ID with ownership check
+      EditTransaction.ts        edit amount/category/note
       CheckUserAccess.ts        access gate (whitelist check + auto-register)
       ApproveUser.ts            approve pending user + notify
       BlockUser.ts              block a user
@@ -63,11 +69,15 @@ src/
 
 ```
 User message → TelegramAdapter → BotService
-  ├─ /id command?    → Reply with chat ID
+  ├─ /start command? → Send onboarding message + continue to access check
+  ├─ id command?     → Reply with chat ID
   ├─ Access check    → CheckUserAccess (whitelist gate)
   │     ├─ New user?     → Create as pending, send welcome message
   │     ├─ Pending/Blocked? → Send "waiting for approval" message
   │     └─ Whitelisted?  → Continue ↓
+  ├─ /help command?  → Send command reference
+  ├─ Undo/Delete?    → UndoLastTransaction → confirm deletion
+  ├─ Edit?           → EditIntentDetector → EditTransaction → confirm update
   ├─ Trend request?  → GenerateTrendReport → send summary + links
   ├─ Report request? → GenerateWeeklyReport → send summary + link
   └─ Expense?        → HybridParser → RecordTransaction → save to Supabase
@@ -115,7 +125,7 @@ npm run start:dev      # development with hot-reload
 transactions (
   id          uuid PRIMARY KEY,
   user_id     text NOT NULL,
-  amount      numeric NOT NULL,
+  amount      numeric NOT NULL,       -- positive = expense, negative = income
   category    text NOT NULL,
   note        text,
   channel     text NOT NULL DEFAULT 'telegram',
@@ -160,11 +170,19 @@ npm run migrate   # applies all SQL files in order
 
 | Message | Action |
 |---------|--------|
-| `/id` | Show your Telegram chat ID |
+| `/start` | Onboarding: introduce the bot + examples |
+| `/help` | Show full command reference |
+| `id` | Show your Telegram chat ID |
 | `ăn trưa 50k` | Record expense (today) |
 | `hôm qua grab 30k` | Record expense (yesterday) |
 | `3 ngày trước cafe 25k` | Record expense (3 days ago) |
 | `ăn sáng 70k, rửa xe 30k` | Record multiple expenses |
+| `lương 20tr` | Record income (stored as negative amount) |
+| `xoá` / `huỷ` / `undo` | Delete last recorded transaction |
+| `sửa thành 30k` | Edit last transaction's amount |
+| `sửa thành ăn uống` | Edit last transaction's category |
+| `sửa ngày hôm qua` | Edit last transaction's date |
+| `sửa thành cà phê 25k hôm qua` | Edit multiple fields at once |
 | `báo cáo` | Report last 7 days |
 | `báo cáo tuần trước` | Report previous week |
 | `chi tiêu tháng này` | Report current month |
@@ -180,9 +198,6 @@ npm run migrate   # applies all SQL files in order
 | `báo cáo 6 tháng` | Trend report for last 6 months |
 | `xu hướng chi tiêu 3 tháng` | Trend report for last 3 months |
 | `báo cáo xu hướng` | Trend report (default 6 months) |
-| `gửi báo cáo` | Send report via email (planned) |
-| `định mức ăn uống 5tr` | Set category budget limit (planned) |
-| `xem định mức` | View budget status (planned) |
 
 ## API Endpoints
 
@@ -278,7 +293,7 @@ Users who are `pending` or `blocked` receive a polite message and cannot use the
 ## Testing
 
 ```bash
-npm test              # run all tests (248 tests across 14 suites)
+npm test              # run all tests (265 tests across 18 suites)
 npm run test:watch    # watch mode
 ```
 
@@ -287,9 +302,15 @@ npm run test:watch    # watch mode
 - [x] **Trend report** — Multi-month spending analysis with half-period comparison, per-category trends, Excel multi-tab export, and Telegram bot routing. *(completed)*
 - [x] **Trend report web UI** — Frontend page at `/trend?token=xxx` to visualize trend data with charts (line chart for monthly totals, bar chart for category breakdown). Backend API is ready.
 - [x] **Whitelist access control** — Only approved users can use the bot. New users auto-register as pending, admin approves/blocks via REST API with `X-Admin-Secret` auth. Approved users get a Telegram notification. *(completed)*
+- [x] **Income/expense sign fix** — Income categories (Thu nhập, Tiết kiệm & Đầu tư) stored with negative amounts. Reports correctly separate income from expenses. *(completed)*
+- [x] **Undo / Edit / Delete transactions** — "xoá", "sửa thành 30k", "sửa thành ăn uống", "sửa ngày hôm qua". Natural language edit with hybrid regex + AI detection. Repository supports findById, findLastByUser, update, deleteById. *(completed)*
+- [x] **/start & /help commands** — Onboarding message for new users, full command reference for whitelisted users. *(completed)*
 - [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
-- [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec in progress)*
+- [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec complete, implementation pending)*
+- [ ] **Proactive notifications** — Daily reminder (conditional), weekly digest, monthly summary via @nestjs/schedule
 - [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
+- [ ] **Forward bank notifications** — Forward SMS/app notification messages from banks/MoMo to auto-record transactions
+- [ ] **Voice message support** — Telegram voice → Gemini transcription → HybridParser
 - [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
 - [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
 - [ ] **Production deployment** — Render/Railway with webhook mode for Telegram

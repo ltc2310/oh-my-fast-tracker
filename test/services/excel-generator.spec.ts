@@ -288,7 +288,7 @@ describe('ExcelGeneratorService', () => {
       expect(row3.getCell(4).value).toBe('Oldest');
     });
 
-    it('should produce valid workbook with 0 ₫ in Tổng cộng row when transactions are empty', async () => {
+    it('should produce valid workbook with 0 ₫ in Tổng chi row when transactions are empty', async () => {
       const summary: WeeklySummary = {
         total: 0,
         byCategory: [],
@@ -305,17 +305,17 @@ describe('ExcelGeneratorService', () => {
       const workbook = await parseWorkbook(buffer);
       const worksheet = workbook.worksheets[0];
 
-      // Find the "Tổng cộng" row
+      // Find the "Tổng chi" row
       let totalRowNum = 0;
       worksheet.eachRow((row, rowNumber) => {
-        if (String(row.getCell(4).value) === 'Tổng cộng') {
+        if (String(row.getCell(4).value) === 'Tổng chi') {
           totalRowNum = rowNumber;
         }
       });
       expect(totalRowNum).toBeGreaterThan(0);
 
       const totalRow = worksheet.getRow(totalRowNum);
-      expect(totalRow.getCell(4).value).toBe('Tổng cộng');
+      expect(totalRow.getCell(4).value).toBe('Tổng chi');
       expect(totalRow.getCell(5).value).toBe('0 ₫');
       expect(totalRow.getCell(4).font?.bold).toBe(true);
       expect(totalRow.getCell(5).font?.bold).toBe(true);

@@ -103,6 +103,11 @@ export class ExcelGeneratorService {
     // Total spending row with VND formatting
     worksheet.addRow([`Tổng chi tiêu: ${formatVND(summary.total)}`]);
 
+    // Total income row (if any)
+    if (summary.totalIncome && summary.totalIncome > 0) {
+      worksheet.addRow([`Tổng thu nhập: ${formatVND(summary.totalIncome)}`]);
+    }
+
     // Empty row before category table
     worksheet.addRow([]);
 
@@ -181,30 +186,55 @@ export class ExcelGeneratorService {
     });
 
     // Data rows with sequential STT
-    let totalAmount = 0;
+    let totalExpense = 0;
+    let totalIncome = 0;
     for (let i = 0; i < sorted.length; i++) {
       const txn = sorted[i];
       const effectiveDate = txn.spentAt ?? txn.createdAt ?? new Date(0);
+      // Income (negative amount) displayed as positive value
+      const isIncome = txn.amount < 0;
+      const displayAmount = isIncome
+        ? formatVND(Math.abs(txn.amount))
+        : formatVND(txn.amount);
+
       worksheet.addRow([
         i + 1,
         this.formatDateVN(new Date(effectiveDate)),
         txn.category,
         txn.note || '',
-        formatVND(txn.amount),
+        displayAmount,
       ]);
-      totalAmount += txn.amount;
+
+      if (isIncome) {
+        totalIncome += Math.abs(txn.amount);
+      } else {
+        totalExpense += txn.amount;
+      }
     }
 
-    // "Tổng cộng" sum row — bold
-    const sumRow = worksheet.addRow([
+    // "Tổng chi" sum row — bold
+    const expenseRow = worksheet.addRow([
       '',
       '',
       '',
-      'Tổng cộng',
-      formatVND(totalAmount),
+      'Tổng chi',
+      formatVND(totalExpense),
     ]);
-    sumRow.getCell(4).font = { bold: true };
-    sumRow.getCell(5).font = { bold: true };
+    expenseRow.getCell(4).font = { bold: true };
+    expenseRow.getCell(5).font = { bold: true };
+
+    // "Tổng thu" row if there's income
+    if (totalIncome > 0) {
+      const incomeRow = worksheet.addRow([
+        '',
+        '',
+        '',
+        'Tổng thu',
+        formatVND(totalIncome),
+      ]);
+      incomeRow.getCell(4).font = { bold: true };
+      incomeRow.getCell(5).font = { bold: true };
+    }
   }
 
   private applyStyles(
@@ -252,11 +282,13 @@ export class ExcelGeneratorService {
 
     if (transactionHeaderRow) {
       const transactionCount = summary.transactions.length;
-      // +1 for the "Tổng cộng" row
+      // +1 for "Tổng chi" row, +1 more if there's income
+      const hasIncome = summary.transactions.some(t => t.amount < 0);
+      const extraRows = hasIncome ? 2 : 1;
       this.applyBordersToTableRows(
         worksheet,
         transactionHeaderRow,
-        transactionCount + 1,
+        transactionCount + extraRows,
         5,
       );
     }
@@ -300,7 +332,7 @@ export class ExcelGeneratorService {
   private styleTotalRow(worksheet: ExcelJS.Worksheet): void {
     worksheet.eachRow((row) => {
       const cell4Value = String(row.getCell(4).value ?? '');
-      if (cell4Value === 'Tổng cộng') {
+      if (cell4Value === 'Tổng chi' || cell4Value === 'Tổng thu') {
         for (let col = 1; col <= 5; col++) {
           row.getCell(col).fill = ACCENT_FILL;
         }

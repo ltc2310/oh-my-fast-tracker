@@ -5,8 +5,13 @@ import { RecordTransaction } from "../../application/usecases/RecordTransaction"
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
 import { CheckUserAccess } from "../../application/usecases/CheckUserAccess";
+import { UndoLastTransaction } from "../../application/usecases/UndoLastTransaction";
+import { EditTransaction } from "../../application/usecases/EditTransaction";
 import { TokenService } from "../../domain/ports/TokenService";
+import { EditIntentDetector, EditIntentResult } from "../../domain/ports/EditIntentDetector";
+import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { appConfig } from "../config/app.config";
+import { detectCategory, expandAbbreviations, normalizeSpelling } from "../parsers/RegexParser";
 
 /** Access control messages (Vietnamese) */
 const WELCOME_MSG =
@@ -16,6 +21,47 @@ const PENDING_MSG =
 const SERVICE_UNAVAILABLE_MSG =
   "Hệ thống đang gặp sự cố tạm thời, sếp thử lại sau nhé 🙏";
 
+/** /start — shown when user opens bot for the first time */
+const START_MSG = `Chào sếp! Em là bot quản lý chi tiêu cá nhân 💰
+
+Chỉ cần nhắn kiểu: "ăn trưa 50k" hay "grab 30k, cf 25k" là em ghi nhận ngay.
+
+Một số ví dụ:
+• ăn sáng 70k → ghi 70.000đ vào Ăn uống
+• hôm qua grab 30k → ghi 30.000đ (ngày hôm qua)
+• lương 20tr → ghi thu nhập 20.000.000đ
+
+Gõ /help để xem đầy đủ các lệnh nhé!`;
+
+/** /help — full command reference for whitelisted users */
+const HELP_MSG = `📖 Hướng dẫn sử dụng
+
+💸 Ghi chi tiêu:
+• ăn trưa 50k
+• hôm qua grab 30k
+• ăn sáng 70k, rửa xe 30k (nhiều khoản)
+• cf 30k (viết tắt: cà phê)
+• lương 20tr (thu nhập)
+
+📊 Xem báo cáo:
+• báo cáo (7 ngày gần nhất)
+• chi tiêu tháng này
+• chi tiêu tháng trước
+• chi tiêu từ 1/6 đến 30/6
+• báo cáo 6 tháng (xu hướng)
+
+✏️ Sửa / Xoá:
+• xoá (xoá khoản vừa ghi)
+• sửa thành 30k (sửa số tiền)
+• sửa thành ăn uống (đổi danh mục)
+• sửa ngày hôm qua (đổi ngày)
+• sửa thành cà phê 25k hôm qua (kết hợp)
+
+🔧 Khác:
+• /start — giới thiệu bot
+• /help — xem hướng dẫn này
+• id — xem chat ID của bạn`;
+
 /** Regex to detect trend report request messages (must be checked BEFORE REPORT_REGEX) */
 const TREND_REPORT_REGEX = /báo\s*cáo\s*(?:chi\s*tiêu\s*)?(\d+)\s*tháng|xu\s*hướng\s*(?:chi\s*tiêu\s*)?(\d+)?\s*tháng|báo\s*cáo\s*xu\s*hướng/i;
 
@@ -24,6 +70,9 @@ const COMPARE_MONTHS_REGEX = /so\s*sánh\s*tháng\s*\d+\s*(?:với|và|vs)\s*th�
 
 /** Regex to detect existing weekly/monthly report request messages */
 const REPORT_REGEX = /báo\s*cáo|chi\s*tiêu\s*(tuần|tháng|ngày|\d)|report/i;
+
+/** Regex to detect undo/delete last transaction */
+const UNDO_REGEX = /^(xo[áa]|xóa|huỷ|hủy|undo|bỏ)\s*(khoản\s*)?(vừa\s*rồi|cuối|gần\s*nhất|mới\s*nhất|lần\s*trước)?$/i;
 
 /**
  * Parse a report request message to determine the date range.
@@ -110,10 +159,14 @@ export class BotService implements OnModuleInit {
     @Inject("ChannelAdapter") private readonly channelAdapter: ChannelAdapter,
     @Inject("TokenService") private readonly tokenService: TokenService,
     @Inject(appConfig.KEY) private readonly config: ConfigType<typeof appConfig>,
+    @Inject("EditIntentDetector") private readonly editIntentDetector: EditIntentDetector,
+    @Inject("TransactionRepository") private readonly transactionRepository: TransactionRepository,
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
     private readonly checkUserAccess: CheckUserAccess,
+    private readonly undoLastTransaction: UndoLastTransaction,
+    private readonly editTransaction: EditTransaction,
   ) { }
 
   onModuleInit() {
@@ -121,6 +174,12 @@ export class BotService implements OnModuleInit {
       // Debug: respond with user's chat ID
       if (/^id$/i.test(message.text.trim())) {
         await this.channelAdapter.sendText(message.userId, `Your ID: ${message.userId}`);
+        return;
+      }
+
+      // /start command — works before access check (Telegram sends this on first open)
+      if (/^\/start$/i.test(message.text.trim())) {
+        await this.channelAdapter.sendText(message.userId, START_MSG);
         return;
       }
 
@@ -146,11 +205,39 @@ export class BotService implements OnModuleInit {
         return;
       }
 
+      // /help command — only for whitelisted users
+      if (/^\/help$/i.test(message.text.trim())) {
+        await this.channelAdapter.sendText(message.userId, HELP_MSG);
+        return;
+      }
+
       // Check compare months pattern first (not yet supported)
       if (COMPARE_MONTHS_REGEX.test(message.text)) {
         await this.channelAdapter.sendText(
           message.userId,
           'Tính năng so sánh tháng chưa được hỗ trợ. Sếp thử dùng "báo cáo 6 tháng" để xem xu hướng chi tiêu nhé!'
+        );
+        return;
+      }
+
+      // Undo / delete last transaction
+      if (UNDO_REGEX.test(message.text.trim())) {
+        await this.handleUndo(message.userId);
+        return;
+      }
+
+      // Edit transaction (hybrid: regex → AI fallback)
+      try {
+        const editResult = await this.editIntentDetector.detect(message.text.trim());
+        if (editResult) {
+          await this.handleEditIntent(message.userId, editResult);
+          return;
+        }
+      } catch (error) {
+        this.logger.error("Edit intent detection failed", error);
+        await this.channelAdapter.sendText(
+          message.userId,
+          "Em đang gặp sự cố khi xử lý yêu cầu sửa, sếp thử lại sau hoặc gõ theo mẫu: \"sửa thành 30k\" nhé 🙏"
         );
         return;
       }
@@ -181,9 +268,11 @@ export class BotService implements OnModuleInit {
       if (transactions.length === 1) {
         const t = transactions[0];
         const prefix = formatSpentPrefix(t.spentAt);
+        const displayAmount = Math.abs(t.amount).toLocaleString("vi-VN");
+        const verb = t.amount < 0 ? "ghi nhận thu" : "ghi nhận";
         await this.channelAdapter.sendText(
           message.userId,
-          `Em đã ghi nhận ${prefix}${t.amount.toLocaleString("vi-VN")}đ - ${t.category}`
+          `Em đã ${verb} ${prefix}${displayAmount}đ - ${t.category}`
         );
         return;
       }
@@ -191,10 +280,14 @@ export class BotService implements OnModuleInit {
       // Multiple transactions
       const lines = transactions.map((t) => {
         const prefix = formatSpentPrefix(t.spentAt);
-        return `• ${prefix}${t.amount.toLocaleString("vi-VN")}đ - ${t.category}`;
+        const displayAmount = Math.abs(t.amount).toLocaleString("vi-VN");
+        const sign = t.amount < 0 ? "+" : "";
+        return `• ${prefix}${sign}${displayAmount}đ - ${t.category}`;
       });
-      const total = transactions.reduce((sum, t) => sum + t.amount, 0);
-      lines.push(`\nTổng: ${total.toLocaleString("vi-VN")}đ`);
+      const totalExpense = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+      const totalIncome = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      if (totalExpense > 0) lines.push(`\nTổng chi: ${totalExpense.toLocaleString("vi-VN")}đ`);
+      if (totalIncome > 0) lines.push(`${totalExpense > 0 ? "" : "\n"}Tổng thu: ${totalIncome.toLocaleString("vi-VN")}đ`);
 
       await this.channelAdapter.sendText(
         message.userId,
@@ -229,7 +322,8 @@ export class BotService implements OnModuleInit {
     const reply = [
       `Đây là báo cáo chi tiêu ${formatDate(range.from)} → ${formatDate(range.to)}, e gửi sếp xem qua:`,
       "",
-      `💰 Tổng: ${summary.total.toLocaleString("vi-VN")}đ`,
+      `💰 Tổng chi: ${summary.total.toLocaleString("vi-VN")}đ`,
+      ...(summary.totalIncome ? [`💵 Tổng thu: ${summary.totalIncome.toLocaleString("vi-VN")}đ`] : []),
       "",
       ...lines,
       "",
@@ -303,5 +397,104 @@ export class BotService implements OnModuleInit {
     const reply = lines.join("\n");
     this.logger.log(`[TrendReport] user=${userId} months=${months} → ${webviewLink}`);
     await this.channelAdapter.sendText(userId, reply);
+  }
+
+  private async handleUndo(userId: string): Promise<void> {
+    const deleted = await this.undoLastTransaction.execute(userId);
+    if (!deleted) {
+      await this.channelAdapter.sendText(
+        userId,
+        "Không tìm thấy khoản nào để xoá. Có thể sếp chưa ghi khoản nào hoặc đã xoá rồi."
+      );
+      return;
+    }
+
+    const displayAmount = Math.abs(deleted.amount).toLocaleString("vi-VN");
+    await this.channelAdapter.sendText(
+      userId,
+      `Đã xoá khoản ${displayAmount}đ - ${deleted.category} (${deleted.note}).`
+    );
+  }
+
+  private async handleEditIntent(userId: string, result: EditIntentResult): Promise<void> {
+    // Incomplete — hỏi lại sếp
+    if (result.isIncomplete) {
+      await this.channelAdapter.sendText(userId,
+        `Sếp muốn sửa gì ạ? Em hỗ trợ sửa:\n` +
+        `• Số tiền: "sửa thành 30k"\n` +
+        `• Danh mục: "sửa thành ăn uống"\n` +
+        `• Ngày: "sửa ngày hôm qua"\n` +
+        `• Hoặc kết hợp: "sửa thành cà phê 25k hôm qua"`
+      );
+      return;
+    }
+
+    // Tìm khoản gần nhất qua DB
+    const lastTx = await this.transactionRepository.findLastByUser(userId);
+    if (!lastTx) {
+      await this.channelAdapter.sendText(userId,
+        "Không tìm thấy khoản nào để sửa. Sếp thử ghi khoản mới trước nhé."
+      );
+      return;
+    }
+
+    // Build fields cho EditTransaction
+    const fields: { amount?: number; category?: string; note?: string; spentAt?: Date } = {};
+
+    if (result.fields.amount !== undefined) {
+      fields.amount = result.fields.amount;
+    }
+
+    if (result.fields.category) {
+      // Chạy Category_Detector pipeline
+      const lowered = result.fields.category.toLowerCase();
+      const expanded = expandAbbreviations(lowered);
+      const normalized = normalizeSpelling(expanded);
+      const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+
+      if (!resolvedCategory) {
+        await this.channelAdapter.sendText(userId,
+          `Em chưa nhận ra danh mục "${result.fields.category}". Sếp chọn một trong các danh mục:\n\n` +
+          `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
+          `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, ` +
+          `Tiết kiệm & Đầu tư, Thu nhập, Khác`
+        );
+        return;
+      }
+
+      fields.category = resolvedCategory;
+      fields.note = result.fields.note ?? result.fields.category;
+    }
+
+    if (result.fields.spentAt) {
+      // Validate: không cho phép ngày tương lai
+      const now = new Date();
+      if (result.fields.spentAt > now) {
+        await this.channelAdapter.sendText(userId,
+          "Em không thể đặt ngày trong tương lai. Sếp thử \"sửa ngày hôm qua\" hoặc \"sửa 3 ngày trước\" nhé."
+        );
+        return;
+      }
+      fields.spentAt = result.fields.spentAt;
+    }
+
+    // Execute edit
+    const updated = await this.editTransaction.execute(userId, lastTx.id!, fields);
+    if (!updated) {
+      await this.channelAdapter.sendText(userId,
+        "Không sửa được, khoản có thể đã bị xoá."
+      );
+      return;
+    }
+
+    // Format response
+    const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
+    const isIncome = updated.amount < 0;
+    const verb = isIncome ? "sửa thu nhập thành" : "sửa thành";
+    await this.channelAdapter.sendText(userId,
+      `Đã ${verb} ${displayAmount}đ - ${updated.category}` +
+      (updated.note && updated.note !== updated.category ? ` (${updated.note})` : "") +
+      "."
+    );
   }
 }

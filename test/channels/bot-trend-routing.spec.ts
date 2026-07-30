@@ -83,10 +83,14 @@ describe("BotService - Trend Report Routing", () => {
       mockChannelAdapter,
       mockTokenService,
       mockConfig as any,
+      { detect: jest.fn().mockResolvedValue(null) } as any, // EditIntentDetector
+      { findLastByUser: jest.fn().mockResolvedValue(null) } as any, // TransactionRepository
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
       mockCheckUserAccess,
+      { execute: jest.fn().mockResolvedValue(null) } as any, // UndoLastTransaction
+      { execute: jest.fn().mockResolvedValue(null) } as any, // EditTransaction
     );
 
     botService.onModuleInit();

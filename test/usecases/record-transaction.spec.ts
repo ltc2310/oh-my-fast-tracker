@@ -14,6 +14,10 @@ describe("RecordTransaction", () => {
       save: jest.fn(),
       findByUserAndDateRange: jest.fn(),
       findDistinctUserIds: jest.fn(),
+      findById: jest.fn(),
+      findLastByUser: jest.fn(),
+      update: jest.fn(),
+      deleteById: jest.fn(),
     };
     useCase = new RecordTransaction(mockParser, mockRepo);
   });
