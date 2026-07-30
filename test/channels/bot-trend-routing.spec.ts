@@ -4,6 +4,7 @@ import { TokenService } from "../../src/domain/ports/TokenService";
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
+import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
 import { TrendReport } from "../../src/domain/entities/TrendReport";
 
 describe("BotService - Trend Report Routing", () => {
@@ -16,6 +17,7 @@ describe("BotService - Trend Report Routing", () => {
   let mockRecordTransaction: jest.Mocked<RecordTransaction>;
   let mockGenerateWeeklyReport: jest.Mocked<GenerateWeeklyReport>;
   let mockGenerateTrendReport: jest.Mocked<GenerateTrendReport>;
+  let mockCheckUserAccess: jest.Mocked<CheckUserAccess>;
   const mockConfig = { webviewBaseUrl: "http://localhost:3000/report" };
 
   const fakeTrendReport: TrendReport = {
@@ -73,6 +75,10 @@ describe("BotService - Trend Report Routing", () => {
       execute: jest.fn().mockResolvedValue(fakeTrendReport),
     } as any;
 
+    mockCheckUserAccess = {
+      execute: jest.fn().mockResolvedValue({ allowed: true, isFirstMessage: false, user: {} }),
+    } as any;
+
     botService = new BotService(
       mockChannelAdapter,
       mockTokenService,
@@ -80,6 +86,7 @@ describe("BotService - Trend Report Routing", () => {
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
+      mockCheckUserAccess,
     );
 
     botService.onModuleInit();

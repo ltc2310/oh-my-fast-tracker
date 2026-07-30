@@ -21,6 +21,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       amount: transaction.amount,
       category: transaction.category,
       note: transaction.note,
+      channel: transaction.channel ?? 'telegram',
       spent_at: (transaction.spentAt ?? new Date()).toISOString(),
     };
 
@@ -38,6 +39,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       amount: data.amount,
       category: data.category,
       note: data.note,
+      channel: data.channel,
       spentAt: new Date(data.spent_at),
       createdAt: new Date(data.created_at),
     };
@@ -65,6 +67,7 @@ export class SupabaseTransactionRepository implements TransactionRepository {
       amount: row.amount,
       category: row.category,
       note: row.note,
+      channel: row.channel,
       spentAt: new Date(row.spent_at),
       createdAt: new Date(row.created_at),
     }));

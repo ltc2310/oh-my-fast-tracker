@@ -29,6 +29,7 @@ export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
         userId: String(msg.chat.id),
         channel: "telegram",
         text: msg.text,
+        username: msg.from?.username ?? null,
       });
     });
 

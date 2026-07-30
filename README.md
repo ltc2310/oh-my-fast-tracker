@@ -10,6 +10,7 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 - **Abbreviation & slang support** — "cf 30k" (cà phê), "dt 500k" (điện thoại), "ts 30k" (trà sữa), informal spellings like "fở" (phở), and English keywords like "lunch", "gym", "parking"
 - **AI-powered categorization** — Hybrid parser: enhanced keyword-based regex with abbreviation expansion, spelling normalization, emoji detection, and cross-segment linking for speed; Gemini Flash AI fallback for truly ambiguous cases
 - **Enhanced regex parser** — Abbreviation expansion (cf, cp, dt, bv, st, ks, nt, ts), spelling normalization (f→ph, z→gi, w→qu), contextual emoji matching, cross-segment combination with connector verbs (hết, tốn, mất, trả, chi, xài, tiêu), longest-match category detection
+- **Whitelist access control** — Only approved users can interact with the bot. New users auto-register as pending, admin approves/blocks via REST API. Approved users get a Telegram notification.
 - **Past date support** — "hôm qua rửa xe 25k" saves with yesterday's `spent_at`
 - **Flexible reporting** — "báo cáo tuần trước", "chi tiêu tháng này", "từ 1/6 đến 30/6"
 - **Report webview** — generates a link with chart + detailed table
@@ -24,14 +25,18 @@ NestJS + Clean Architecture (domain → application → infrastructure).
 ```
 src/
   domain/           ← Pure interfaces, no dependencies
-    entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport
-    ports/            ChannelAdapter, Parser, TokenService, TransactionRepository
+    entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport, User
+    ports/            ChannelAdapter, Parser, TokenService, TransactionRepository, UserRepository, NotificationSender
 
   application/      ← Use cases, depends only on domain ports
     usecases/
       RecordTransaction.ts      parse + save expense(s)
       GenerateWeeklyReport.ts   aggregate by date range
       GenerateTrendReport.ts    multi-month trend analysis
+      CheckUserAccess.ts        access gate (whitelist check + auto-register)
+      ApproveUser.ts            approve pending user + notify
+      BlockUser.ts              block a user
+      ListPendingUsers.ts       list users by status
     services/
       ExcelGeneratorService.ts       generate weekly .xlsx reports
       ExcelTrendGeneratorService.ts  generate trend .xlsx (multi-tab)
@@ -41,12 +46,13 @@ src/
 
   infrastructure/   ← Concrete implementations
     auth/             JwtTokenService
-    channels/         TelegramAdapter, BotService (message routing + trend routing)
-    config/           NestJS ConfigModule (app, telegram, supabase, auth, ai)
+    channels/         TelegramAdapter, TelegramNotificationSender, BotService
+    config/           NestJS ConfigModule (app, telegram, supabase, auth, ai, admin)
     parsers/          RegexParser, AIParser, HybridParser
-    repositories/     SupabaseTransactionRepository
+    repositories/     SupabaseTransactionRepository, SupabaseUserRepository
     http/
-      controllers/    HealthController, ReportController, ExportController, TrendReportController
+      controllers/    HealthController, ReportController, ExportController, TrendReportController, AdminUserController
+      guards/         AdminSecretGuard
       http.module.ts
 
   app.module.ts     ← Root NestJS module
@@ -57,6 +63,11 @@ src/
 
 ```
 User message → TelegramAdapter → BotService
+  ├─ /id command?    → Reply with chat ID
+  ├─ Access check    → CheckUserAccess (whitelist gate)
+  │     ├─ New user?     → Create as pending, send welcome message
+  │     ├─ Pending/Blocked? → Send "waiting for approval" message
+  │     └─ Whitelisted?  → Continue ↓
   ├─ Trend request?  → GenerateTrendReport → send summary + links
   ├─ Report request? → GenerateWeeklyReport → send summary + link
   └─ Expense?        → HybridParser → RecordTransaction → save to Supabase
@@ -96,11 +107,7 @@ npm run start:dev      # development with hot-reload
 | `PORT` | API server port (default: 3000) |
 | `GEMINI_API_KEY` | Google Gemini API key |
 | `GEMINI_MODEL` | Gemini model (default: gemini-2.0-flash-lite) |
-| `SMTP_HOST` | SMTP server hostname (planned: email delivery) |
-| `SMTP_PORT` | SMTP server port (planned: email delivery) |
-| `SMTP_USER` | SMTP username (planned: email delivery) |
-| `SMTP_PASS` | SMTP password (planned: email delivery) |
-| `SMTP_FROM` | Sender email address (planned: email delivery) |
+| `ADMIN_API_SECRET` | Secret for Admin API authentication (X-Admin-Secret header) |
 
 ### Database schema
 
@@ -111,9 +118,35 @@ transactions (
   amount      numeric NOT NULL,
   category    text NOT NULL,
   note        text,
+  channel     text NOT NULL DEFAULT 'telegram',
   spent_at    timestamptz NOT NULL DEFAULT now(),  -- actual spending date
   created_at  timestamptz NOT NULL DEFAULT now()   -- record creation date
 )
+
+users (
+  id                uuid PRIMARY KEY,
+  channel           text NOT NULL,
+  channel_user_id   text NOT NULL,
+  channel_username  text,
+  access_status     text NOT NULL DEFAULT 'pending',  -- pending | whitelisted | blocked
+  plan              text NOT NULL DEFAULT 'free',     -- free | pro | max
+  whitelisted_at    timestamptz,
+  plan_updated_at   timestamptz,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(channel, channel_user_id)
+)
+```
+
+### Database migrations
+
+```bash
+npm run migrate   # applies all SQL files in order
+
+# Migration files:
+# sql/schema.sql                        — base transactions table
+# sql/002-whitelist-access-control.sql  — users table + indexes
+# sql/003-backfill-whitelist.sql        — backfill existing users as whitelisted
 ```
 
 ### Seed mock data (for testing trend report)
@@ -127,6 +160,7 @@ transactions (
 
 | Message | Action |
 |---------|--------|
+| `/id` | Show your Telegram chat ID |
 | `ăn trưa 50k` | Record expense (today) |
 | `hôm qua grab 30k` | Record expense (yesterday) |
 | `3 ngày trước cafe 25k` | Record expense (3 days ago) |
@@ -152,6 +186,8 @@ transactions (
 
 ## API Endpoints
 
+### Public APIs
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
@@ -159,6 +195,63 @@ transactions (
 | GET | `/api/report/export?token=xxx` | Download weekly Excel report (.xlsx) |
 | GET | `/api/report/trend?token=xxx&months=6&endMonth=2026-07` | Get trend report JSON (3–12 months) |
 | GET | `/api/report/trend/export?token=xxx&months=6&endMonth=2026-07` | Download trend Excel report (.xlsx) |
+
+### Admin APIs (require `X-Admin-Secret` header)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/internal/admin/users` | List users (default: pending) |
+| GET | `/internal/admin/users?status=whitelisted` | List whitelisted users |
+| GET | `/internal/admin/users?status=blocked` | List blocked users |
+| POST | `/internal/admin/users/:userId/approve` | Approve a pending user |
+| POST | `/internal/admin/users/:userId/block` | Block a user |
+
+#### Admin API Examples
+
+```bash
+# List pending users
+curl http://localhost:3000/internal/admin/users \
+  -H "X-Admin-Secret: $ADMIN_API_SECRET"
+
+# Approve a user
+curl -X POST http://localhost:3000/internal/admin/users/{userId}/approve \
+  -H "X-Admin-Secret: $ADMIN_API_SECRET"
+
+# Block a user
+curl -X POST http://localhost:3000/internal/admin/users/{userId}/block \
+  -H "X-Admin-Secret: $ADMIN_API_SECRET"
+```
+
+#### Admin API Responses
+
+```json
+// GET /internal/admin/users
+{
+  "users": [
+    {
+      "id": "uuid",
+      "channel": "telegram",
+      "channelUserId": "7046661244",
+      "channelUsername": "john_doe",
+      "accessStatus": "pending",
+      "createdAt": "2025-07-30T10:00:00.000Z"
+    }
+  ]
+}
+
+// POST /internal/admin/users/:userId/approve
+{
+  "id": "uuid",
+  "accessStatus": "whitelisted",
+  "whitelistedAt": "2025-07-30T10:05:00.000Z"
+}
+
+// POST /internal/admin/users/:userId/block
+{
+  "id": "uuid",
+  "accessStatus": "blocked"
+}
+```
 
 ### Trend Report API Details
 
@@ -172,6 +265,16 @@ transactions (
 - `400 MONTHS_BELOW_MINIMUM` — months < 3
 - `400 MONTHS_LIMIT_EXCEEDED` — months > 12
 
+## Access Control Flow
+
+1. **New user** messages the bot → auto-registered as `pending` → receives welcome message
+2. **Admin** reviews pending users via `GET /internal/admin/users`
+3. **Admin** approves via `POST /internal/admin/users/:id/approve`
+4. **User** receives Telegram notification that their account is activated
+5. **User** can now record expenses and view reports
+
+Users who are `pending` or `blocked` receive a polite message and cannot use the bot.
+
 ## Testing
 
 ```bash
@@ -183,6 +286,7 @@ npm run test:watch    # watch mode
 
 - [x] **Trend report** — Multi-month spending analysis with half-period comparison, per-category trends, Excel multi-tab export, and Telegram bot routing. *(completed)*
 - [x] **Trend report web UI** — Frontend page at `/trend?token=xxx` to visualize trend data with charts (line chart for monthly totals, bar chart for category breakdown). Backend API is ready.
+- [x] **Whitelist access control** — Only approved users can use the bot. New users auto-register as pending, admin approves/blocks via REST API with `X-Admin-Secret` auth. Approved users get a Telegram notification. *(completed)*
 - [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
 - [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec in progress)*
 - [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
