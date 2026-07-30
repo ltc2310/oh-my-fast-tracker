@@ -4,6 +4,9 @@ import { appConfig, telegramConfig, supabaseConfig, authConfig, aiConfig, adminC
 import { RegexParser } from "./parsers/RegexParser";
 import { AIParser } from "./parsers/AIParser";
 import { HybridParser } from "./parsers/HybridParser";
+import { RegexEditMatcher } from "./parsers/RegexEditMatcher";
+import { AIEditDetector } from "./parsers/AIEditDetector";
+import { HybridEditDetector } from "./parsers/HybridEditDetector";
 import { SupabaseTransactionRepository } from "./repositories/SupabaseTransactionRepository";
 import { SupabaseUserRepository } from "./repositories/SupabaseUserRepository";
 import { JwtTokenService } from "./auth/JwtTokenService";
@@ -29,6 +32,9 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     { provide: "TokenService", useClass: JwtTokenService },
     { provide: "ChannelAdapter", useClass: TelegramAdapter },
     { provide: "NotificationSender", useClass: TelegramNotificationSender },
+    RegexEditMatcher,
+    AIEditDetector,
+    { provide: "EditIntentDetector", useClass: HybridEditDetector },
   ],
   exports: [
     "Parser",
@@ -37,6 +43,7 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     "TokenService",
     "ChannelAdapter",
     "NotificationSender",
+    "EditIntentDetector",
   ],
 })
 export class InfrastructureModule {}

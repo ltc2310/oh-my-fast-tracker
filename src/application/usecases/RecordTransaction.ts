@@ -2,6 +2,7 @@ import { Injectable, Inject } from "@nestjs/common";
 import { Parser } from "../../domain/ports/Parser";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { Transaction } from "../../domain/entities/Transaction";
+import { isIncomeCategory } from "../../domain/constants/income-categories";
 
 /**
  * This use case only depends on two interfaces (Parser, TransactionRepository)
@@ -23,9 +24,14 @@ export class RecordTransaction {
     const saved: Transaction[] = [];
 
     for (const item of parsed) {
+      // Income categories store negative amounts to distinguish from expenses
+      const amount = isIncomeCategory(item.category)
+        ? -Math.abs(item.amount)
+        : Math.abs(item.amount);
+
       const transaction: Transaction = {
         userId,
-        amount: item.amount,
+        amount,
         category: item.category,
         note: item.note,
         channel,

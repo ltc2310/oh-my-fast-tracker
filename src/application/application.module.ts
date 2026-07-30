@@ -6,6 +6,9 @@ import { CheckUserAccess } from "./usecases/CheckUserAccess";
 import { ApproveUser } from "./usecases/ApproveUser";
 import { BlockUser } from "./usecases/BlockUser";
 import { ListPendingUsers } from "./usecases/ListPendingUsers";
+import { UndoLastTransaction } from "./usecases/UndoLastTransaction";
+import { DeleteTransaction } from "./usecases/DeleteTransaction";
+import { EditTransaction } from "./usecases/EditTransaction";
 import { ExcelGeneratorService } from "./services/ExcelGeneratorService";
 import { TrendAnalysisService } from "./services/TrendAnalysisService";
 import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorService";
@@ -25,6 +28,9 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     ApproveUser,
     BlockUser,
     ListPendingUsers,
+    UndoLastTransaction,
+    DeleteTransaction,
+    EditTransaction,
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
@@ -37,6 +43,9 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     ApproveUser,
     BlockUser,
     ListPendingUsers,
+    UndoLastTransaction,
+    DeleteTransaction,
+    EditTransaction,
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,

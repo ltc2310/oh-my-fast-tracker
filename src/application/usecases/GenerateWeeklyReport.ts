@@ -29,19 +29,26 @@ export class GenerateWeeklyReport {
 
     const totalsByCategory = new Map<string, number>();
     let total = 0;
+    let totalIncome = 0;
 
     for (const t of transactions) {
-      total += t.amount;
-      totalsByCategory.set(
-        t.category,
-        (totalsByCategory.get(t.category) ?? 0) + t.amount
-      );
+      if (t.amount > 0) {
+        // Expense
+        total += t.amount;
+        totalsByCategory.set(
+          t.category,
+          (totalsByCategory.get(t.category) ?? 0) + t.amount
+        );
+      } else {
+        // Income (stored as negative)
+        totalIncome += Math.abs(t.amount);
+      }
     }
 
     const byCategory = Array.from(totalsByCategory.entries()).map(
       ([category, sum]) => ({ category, total: sum })
     );
 
-    return { total, byCategory, transactions, from, to };
+    return { total, totalIncome, byCategory, transactions, from, to };
   }
 }
