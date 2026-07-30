@@ -4,8 +4,17 @@ import { ChannelAdapter } from "../../domain/ports/ChannelAdapter";
 import { RecordTransaction } from "../../application/usecases/RecordTransaction";
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
+import { CheckUserAccess } from "../../application/usecases/CheckUserAccess";
 import { TokenService } from "../../domain/ports/TokenService";
 import { appConfig } from "../config/app.config";
+
+/** Access control messages (Vietnamese) */
+const WELCOME_MSG =
+  "Chào bạn! Bot đang trong giai đoạn thử nghiệm giới hạn người dùng.\nTài khoản của bạn đã được ghi nhận, mình sẽ duyệt sớm nhất có thể. Cảm ơn bạn đã quan tâm 🙏";
+const PENDING_MSG =
+  "Tài khoản của bạn vẫn đang chờ duyệt, mình sẽ thông báo khi có thể sử dụng nhé 🙏";
+const SERVICE_UNAVAILABLE_MSG =
+  "Hệ thống đang gặp sự cố tạm thời, sếp thử lại sau nhé 🙏";
 
 /** Regex to detect trend report request messages (must be checked BEFORE REPORT_REGEX) */
 const TREND_REPORT_REGEX = /báo\s*cáo\s*(?:chi\s*tiêu\s*)?(\d+)\s*tháng|xu\s*hướng\s*(?:chi\s*tiêu\s*)?(\d+)?\s*tháng|báo\s*cáo\s*xu\s*hướng/i;
@@ -104,6 +113,7 @@ export class BotService implements OnModuleInit {
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
+    private readonly checkUserAccess: CheckUserAccess,
   ) { }
 
   onModuleInit() {
@@ -111,6 +121,28 @@ export class BotService implements OnModuleInit {
       // Debug: respond with user's chat ID
       if (/^id$/i.test(message.text.trim())) {
         await this.channelAdapter.sendText(message.userId, `Your ID: ${message.userId}`);
+        return;
+      }
+
+      // Access check
+      try {
+        const accessResult = await this.checkUserAccess.execute(
+          message.channel,
+          message.userId,
+          message.username,
+        );
+
+        if (!accessResult.allowed) {
+          if (accessResult.isFirstMessage) {
+            await this.channelAdapter.sendText(message.userId, WELCOME_MSG);
+          } else {
+            await this.channelAdapter.sendText(message.userId, PENDING_MSG);
+          }
+          return;
+        }
+      } catch (error) {
+        this.logger.error('Access check failed', error);
+        await this.channelAdapter.sendText(message.userId, SERVICE_UNAVAILABLE_MSG);
         return;
       }
 

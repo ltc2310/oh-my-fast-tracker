@@ -1,12 +1,14 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { appConfig, telegramConfig, supabaseConfig, authConfig, aiConfig } from "./config/app.config";
+import { appConfig, telegramConfig, supabaseConfig, authConfig, aiConfig, adminConfig } from "./config/app.config";
 import { RegexParser } from "./parsers/RegexParser";
 import { AIParser } from "./parsers/AIParser";
 import { HybridParser } from "./parsers/HybridParser";
 import { SupabaseTransactionRepository } from "./repositories/SupabaseTransactionRepository";
+import { SupabaseUserRepository } from "./repositories/SupabaseUserRepository";
 import { JwtTokenService } from "./auth/JwtTokenService";
 import { TelegramAdapter } from "./channels/TelegramAdapter";
+import { TelegramNotificationSender } from "./channels/TelegramNotificationSender";
 
 @Global()
 @Module({
@@ -16,20 +18,25 @@ import { TelegramAdapter } from "./channels/TelegramAdapter";
     ConfigModule.forFeature(supabaseConfig),
     ConfigModule.forFeature(authConfig),
     ConfigModule.forFeature(aiConfig),
+    ConfigModule.forFeature(adminConfig),
   ],
   providers: [
     RegexParser,
     AIParser,
     { provide: "Parser", useClass: HybridParser },
     { provide: "TransactionRepository", useClass: SupabaseTransactionRepository },
+    { provide: "UserRepository", useClass: SupabaseUserRepository },
     { provide: "TokenService", useClass: JwtTokenService },
     { provide: "ChannelAdapter", useClass: TelegramAdapter },
+    { provide: "NotificationSender", useClass: TelegramNotificationSender },
   ],
   exports: [
     "Parser",
     "TransactionRepository",
+    "UserRepository",
     "TokenService",
     "ChannelAdapter",
+    "NotificationSender",
   ],
 })
 export class InfrastructureModule {}

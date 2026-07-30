@@ -24,6 +24,10 @@ export const aiConfig = registerAs("ai", () => ({
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite",
 }));
 
+export const adminConfig = registerAs("admin", () => ({
+  secret: requireEnv("ADMIN_API_SECRET"),
+}));
+
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) throw new Error(`Missing required environment variable: ${key}`);

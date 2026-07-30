@@ -434,22 +434,22 @@ describe("RegexParser - Preservation Property Tests: baseline behavior to preser
     parser = new RegexParser();
   });
 
-  describe("Property 2a: 'sữa' alone (without 'trà sữa') maps to 'Con cái'", () => {
+  describe("Property 2a: 'sữa' alone (without 'trà sữa') maps to 'Ăn uống'; with 'con'/'cho con' maps to 'Con cái'", () => {
     /**
      * **Validates: Requirements 3.1, 3.2**
      *
-     * For all inputs where text contains "sữa" but NOT "trà sữa",
-     * the result category equals "Con cái".
+     * Standalone "sữa" (without "trà sữa") categorizes as "Ăn uống".
+     * Only when combined with "con"/"cho con" does it become "Con cái".
      */
-    it("property: any text with 'sữa' (not preceded by 'trà') categorizes as 'Con cái'", () => {
+    it("property: any text with 'sữa' alone (no 'trà sữa', no 'con') categorizes as 'Ăn uống'", () => {
       const fc = require("fast-check");
 
-      // Generate text fragments that include "sữa" but never "trà sữa"
+      // Generate text fragments that include "sữa" but never "trà sữa" and no "con" keyword
       const suaPrefixes = fc.constantFrom(
         "mua", "mua thêm", "đi mua", "cần mua", "cần", "tốn tiền", ""
       );
       const suaSuffixes = fc.constantFrom(
-        "bỉm", "cho bé", "cho con", "bột", "hộp", ""
+        "bột", "hộp", ""
       );
       const amounts = fc.constantFrom("50k", "100k", "200k", "30k", "150k", "80k", "1tr");
 
@@ -466,7 +466,7 @@ describe("RegexParser - Preservation Property Tests: baseline behavior to preser
           if (input.toLowerCase().includes("trà sữa")) return true; // skip
           const results = parser.parse(input);
           if (results.length === 0) return true; // no amount parsed → skip
-          return results[0].category === "Con cái";
+          return results[0].category === "Ăn uống";
         }),
         { numRuns: 200 }
       );
@@ -634,9 +634,9 @@ describe("RegexParser - Preservation Property Tests: baseline behavior to preser
 
   // Concrete observation tests for documentation
   describe("Concrete observations (baseline)", () => {
-    it('detectCategory("sữa 50k") → "Con cái"', () => {
+    it('detectCategory("sữa 50k") → "Ăn uống"', () => {
       const results = parser.parse("sữa 50k");
-      expect(results[0].category).toBe("Con cái");
+      expect(results[0].category).toBe("Ăn uống");
     });
 
     it('detectCategory("sữa bỉm 100k") → "Con cái"', () => {

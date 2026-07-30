@@ -2,6 +2,10 @@ import { Module } from "@nestjs/common";
 import { RecordTransaction } from "./usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "./usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "./usecases/GenerateTrendReport";
+import { CheckUserAccess } from "./usecases/CheckUserAccess";
+import { ApproveUser } from "./usecases/ApproveUser";
+import { BlockUser } from "./usecases/BlockUser";
+import { ListPendingUsers } from "./usecases/ListPendingUsers";
 import { ExcelGeneratorService } from "./services/ExcelGeneratorService";
 import { TrendAnalysisService } from "./services/TrendAnalysisService";
 import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorService";
@@ -17,6 +21,10 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     RecordTransaction,
     GenerateWeeklyReport,
     GenerateTrendReport,
+    CheckUserAccess,
+    ApproveUser,
+    BlockUser,
+    ListPendingUsers,
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
@@ -25,6 +33,10 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     RecordTransaction,
     GenerateWeeklyReport,
     GenerateTrendReport,
+    CheckUserAccess,
+    ApproveUser,
+    BlockUser,
+    ListPendingUsers,
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,

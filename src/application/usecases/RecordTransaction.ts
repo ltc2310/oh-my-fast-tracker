@@ -16,7 +16,7 @@ export class RecordTransaction {
     @Inject("TransactionRepository") private readonly repository: TransactionRepository
   ) {}
 
-  async execute(userId: string, rawText: string): Promise<Transaction[]> {
+  async execute(userId: string, rawText: string, channel: string = 'telegram'): Promise<Transaction[]> {
     const parsed = await this.parser.parse(rawText);
     if (!parsed || parsed.length === 0) return [];
 
@@ -28,6 +28,7 @@ export class RecordTransaction {
         amount: item.amount,
         category: item.category,
         note: item.note,
+        channel,
         spentAt: item.date ?? new Date(),
       };
 
