@@ -104,7 +104,7 @@ export class BotService implements OnModuleInit {
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
-  ) {}
+  ) { }
 
   onModuleInit() {
     this.channelAdapter.onMessage(async (message) => {
@@ -227,7 +227,7 @@ export class BotService implements OnModuleInit {
       to: report.periodEnd,
     });
 
-    const webviewLink = `${this.config.webviewBaseUrl}/trend?token=${token}`;
+    const webviewLink = `${this.config.webviewBaseUrl}/trend?token=${token}&months=${months}`;
 
     // Format direction text and icon
     const directionMap: Record<string, string> = {
@@ -266,7 +266,7 @@ export class BotService implements OnModuleInit {
     }
 
     lines.push("");
-    lines.push(`👉 Sếp xem chi tiết đầy đủ: ${webviewLink}`);
+    lines.push(`👉 Sếp xem chi tiết giúp em tại đây: ${webviewLink}`);
 
     const reply = lines.join("\n");
     this.logger.log(`[TrendReport] user=${userId} months=${months} → ${webviewLink}`);
