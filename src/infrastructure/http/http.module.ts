@@ -7,6 +7,7 @@ import { HealthController } from "./controllers/health.controller";
 import { ReportController } from "./controllers/report.controller";
 import { ExportController } from "./controllers/export.controller";
 import { TrendReportController } from "./controllers/trend-report.controller";
+import { CompareReportController } from "./controllers/compare-report.controller";
 import { AdminUserController } from "./controllers/admin-user.controller";
 import { AdminSecretGuard } from "./guards/admin-secret.guard";
 import { BotService } from "../channels/bot.service";
@@ -18,7 +19,7 @@ import { BotService } from "../channels/bot.service";
     ApplicationModule,
     InfrastructureModule,
   ],
-  controllers: [HealthController, ReportController, ExportController, TrendReportController, AdminUserController],
+  controllers: [HealthController, ReportController, ExportController, TrendReportController, CompareReportController, AdminUserController],
   providers: [BotService, AdminSecretGuard],
 })
 export class HttpModule {}

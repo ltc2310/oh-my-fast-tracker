@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { RecordTransaction } from "./usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "./usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "./usecases/GenerateTrendReport";
+import { CompareMonths } from "./usecases/CompareMonths";
 import { CheckUserAccess } from "./usecases/CheckUserAccess";
 import { ApproveUser } from "./usecases/ApproveUser";
 import { BlockUser } from "./usecases/BlockUser";
@@ -10,6 +11,7 @@ import { UndoLastTransaction } from "./usecases/UndoLastTransaction";
 import { DeleteTransaction } from "./usecases/DeleteTransaction";
 import { EditTransaction } from "./usecases/EditTransaction";
 import { ExcelGeneratorService } from "./services/ExcelGeneratorService";
+import { ExcelCompareGeneratorService } from "./services/ExcelCompareGeneratorService";
 import { TrendAnalysisService } from "./services/TrendAnalysisService";
 import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorService";
 import { SendDailyReminder } from "./usecases/SendDailyReminder";
@@ -28,6 +30,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     RecordTransaction,
     GenerateWeeklyReport,
     GenerateTrendReport,
+    CompareMonths,
     CheckUserAccess,
     ApproveUser,
     BlockUser,
@@ -36,6 +39,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     DeleteTransaction,
     EditTransaction,
     ExcelGeneratorService,
+    ExcelCompareGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
     SendDailyReminder,
@@ -47,6 +51,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     RecordTransaction,
     GenerateWeeklyReport,
     GenerateTrendReport,
+    CompareMonths,
     CheckUserAccess,
     ApproveUser,
     BlockUser,
@@ -55,6 +60,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     DeleteTransaction,
     EditTransaction,
     ExcelGeneratorService,
+    ExcelCompareGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
     SendDailyReminder,

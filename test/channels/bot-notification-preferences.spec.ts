@@ -7,10 +7,13 @@ import { NotificationPreferenceRepository } from "../../src/domain/ports/Notific
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
-import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
+import { CheckUserAccess, CheckUserAccessResult } from "../../src/application/usecases/CheckUserAccess";
 import { UndoLastTransaction } from "../../src/application/usecases/UndoLastTransaction";
 import { EditTransaction } from "../../src/application/usecases/EditTransaction";
+import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { NotificationPreference } from "../../src/domain/entities/NotificationPreference";
+import { ConfigType } from "@nestjs/config";
+import { appConfig } from "../../src/infrastructure/config/app.config";
 
 describe("BotService - Notification Preference Commands", () => {
   let botService: BotService;
@@ -47,7 +50,7 @@ describe("BotService - Notification Preference Commands", () => {
         isFirstMessage: false,
         user: { id: internalUserId, channel: "telegram", channelUserId: "tg-user-1", accessStatus: "whitelisted", plan: "free" },
       }),
-    } as any;
+    } as unknown as jest.Mocked<CheckUserAccess>;
 
     botService = new BotService(
       mockChannelAdapter,
@@ -56,17 +59,18 @@ describe("BotService - Notification Preference Commands", () => {
         verifyReportToken: jest.fn(),
         generateToken: jest.fn(),
         verifyToken: jest.fn(),
-      } as any,
-      mockConfig as any,
-      { detect: jest.fn().mockResolvedValue(null) } as any,
-      { findLastByUser: jest.fn().mockResolvedValue(null) } as any,
+      } as unknown as TokenService,
+      mockConfig as unknown as ConfigType<typeof appConfig>,
+      { detect: jest.fn().mockResolvedValue(null) } as unknown as EditIntentDetector,
+      { findLastByUser: jest.fn().mockResolvedValue(null) } as unknown as TransactionRepository,
       mockNotificationPreferenceRepository,
-      { execute: jest.fn().mockResolvedValue([]) } as any,
-      { execute: jest.fn().mockResolvedValue({ total: 0, byCategory: [] }) } as any,
-      { execute: jest.fn().mockResolvedValue({}) } as any,
+      { execute: jest.fn().mockResolvedValue([]) } as unknown as RecordTransaction,
+      { execute: jest.fn().mockResolvedValue({ total: 0, byCategory: [] }) } as unknown as GenerateWeeklyReport,
+      { execute: jest.fn().mockResolvedValue({}) } as unknown as GenerateTrendReport,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
       mockCheckUserAccess,
-      { execute: jest.fn().mockResolvedValue(null) } as any,
-      { execute: jest.fn().mockResolvedValue(null) } as any,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as UndoLastTransaction,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
     );
 
     botService.onModuleInit();
@@ -268,7 +272,7 @@ describe("BotService - Notification Preference Commands", () => {
         allowed: false,
         isFirstMessage: false,
         user: { id: internalUserId, channel: "telegram", channelUserId: "tg-user-1", accessStatus: "pending", plan: "free" },
-      } as any);
+      } as unknown as CheckUserAccessResult);
 
       await sendMessage("bật nhắc nhở");
 

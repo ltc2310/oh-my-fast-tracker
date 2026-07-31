@@ -4,6 +4,7 @@ import { GenerateTrendReport, MonthsBelowMinimumError, MonthsLimitExceededError 
 import { ExcelTrendGeneratorService } from '../../src/application/services/ExcelTrendGeneratorService';
 import { TokenService } from '../../src/domain/ports/TokenService';
 import { TrendReport } from '../../src/domain/entities/TrendReport';
+import { Response } from 'express';
 
 describe('TrendReportController', () => {
   let controller: TrendReportController;
@@ -148,7 +149,7 @@ describe('TrendReportController', () => {
       mockGenerateTrendReport.execute.mockResolvedValue(mockTrendReport);
       mockExcelTrendGenerator.generate.mockResolvedValue(mockBuffer);
 
-      await controller.exportTrendReport(validToken, '6', undefined, mockResponse as any);
+      await controller.exportTrendReport(validToken, '6', undefined, mockResponse as unknown as Response);
 
       expect(mockTokenService.verifyReportToken).toHaveBeenCalledWith(validToken);
       expect(mockGenerateTrendReport.execute).toHaveBeenCalledWith('user-123', {
@@ -173,7 +174,7 @@ describe('TrendReportController', () => {
       mockGenerateTrendReport.execute.mockResolvedValue(mockTrendReport);
       mockExcelTrendGenerator.generate.mockResolvedValue(mockBuffer);
 
-      await controller.exportTrendReport(validToken, '6', undefined, mockResponse as any);
+      await controller.exportTrendReport(validToken, '6', undefined, mockResponse as unknown as Response);
 
       expect(mockResponse.set).toHaveBeenCalledWith(
         expect.objectContaining({
