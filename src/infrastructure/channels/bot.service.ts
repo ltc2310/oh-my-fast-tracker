@@ -4,6 +4,7 @@ import { ChannelAdapter } from "../../domain/ports/ChannelAdapter";
 import { RecordTransaction } from "../../application/usecases/RecordTransaction";
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
+import { CompareMonths, SameMonthError, InvalidMonthError } from "../../application/usecases/CompareMonths";
 import { CheckUserAccess } from "../../application/usecases/CheckUserAccess";
 import { UndoLastTransaction } from "../../application/usecases/UndoLastTransaction";
 import { EditTransaction } from "../../application/usecases/EditTransaction";
@@ -50,6 +51,8 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • chi tiêu tháng trước
 • chi tiêu từ 1/6 đến 30/6
 • báo cáo 6 tháng (xu hướng)
+• so sánh tháng (2 tháng gần nhất)
+• so sánh tháng X với tháng Y
 
 ✏️ Sửa / Xoá:
 • xoá (xoá khoản vừa ghi)
@@ -72,8 +75,8 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 /** Regex to detect trend report request messages (must be checked BEFORE REPORT_REGEX) */
 const TREND_REPORT_REGEX = /báo\s*cáo\s*(?:chi\s*tiêu\s*)?(\d+)\s*tháng|xu\s*hướng\s*(?:chi\s*tiêu\s*)?(\d+)?\s*tháng|báo\s*cáo\s*xu\s*hướng/i;
 
-/** Regex to detect compare months requests (not yet supported) */
-const COMPARE_MONTHS_REGEX = /so\s*sánh\s*tháng\s*\d+\s*(?:với|và|vs)\s*tháng\s*\d+/i;
+/** Regex to detect compare months requests — captures optional month numbers */
+const COMPARE_MONTHS_REGEX = /so\s*sánh\s*tháng(?:\s+(\d{1,2})\s*(?:với|và|vs)\s*tháng\s*(\d{1,2}))?/i;
 
 /** Regex to detect existing weekly/monthly report request messages */
 const REPORT_REGEX = /báo\s*cáo|chi\s*tiêu\s*(tuần|tháng|ngày|\d)|report/i;
@@ -181,6 +184,7 @@ export class BotService implements OnModuleInit {
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
+    private readonly compareMonths: CompareMonths,
     private readonly checkUserAccess: CheckUserAccess,
     private readonly undoLastTransaction: UndoLastTransaction,
     private readonly editTransaction: EditTransaction,
@@ -270,12 +274,10 @@ export class BotService implements OnModuleInit {
         }
       }
 
-      // Check compare months pattern first (not yet supported)
-      if (COMPARE_MONTHS_REGEX.test(message.text)) {
-        await this.channelAdapter.sendText(
-          message.userId,
-          'Tính năng so sánh tháng chưa được hỗ trợ. Sếp thử dùng "báo cáo 6 tháng" để xem xu hướng chi tiêu nhé!'
-        );
+      // Check compare months pattern
+      const compareMatch = message.text.match(COMPARE_MONTHS_REGEX);
+      if (compareMatch) {
+        await this.handleCompareMonths(message.userId, message.text);
         return;
       }
 
@@ -578,5 +580,175 @@ export class BotService implements OnModuleInit {
     ].join('\n');
 
     await this.channelAdapter.sendText(channelUserId, reply);
+  }
+
+  private async handleCompareMonths(userId: string, text: string): Promise<void> {
+    const match = text.match(COMPARE_MONTHS_REGEX);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-indexed
+    const currentYear = now.getFullYear();
+
+    let monthA: number;
+    let yearA: number;
+    let monthB: number;
+    let yearB: number;
+
+    if (match && match[1] && match[2]) {
+      // Explicit months mode
+      monthA = parseInt(match[1], 10);
+      monthB = parseInt(match[2], 10);
+
+      // Validate month range
+      if (monthA < 1 || monthA > 12 || monthB < 1 || monthB > 12) {
+        await this.channelAdapter.sendText(
+          userId,
+          "Tháng không hợp lệ, sếp nhập tháng từ 1 đến 12 nhé!",
+        );
+        return;
+      }
+
+      // Validate same month (before year inference, check raw months)
+      // Year inference: if month > current month → previous year
+      yearA = monthA > currentMonth ? currentYear - 1 : currentYear;
+      yearB = monthB > currentMonth ? currentYear - 1 : currentYear;
+
+      if (monthA === monthB && yearA === yearB) {
+        await this.channelAdapter.sendText(
+          userId,
+          "Sếp cần chọn hai tháng khác nhau để so sánh nhé!",
+        );
+        return;
+      }
+    } else {
+      // Default mode: current month vs previous month
+      monthB = currentMonth;
+      yearB = currentYear;
+
+      if (currentMonth === 1) {
+        monthA = 12;
+        yearA = currentYear - 1;
+      } else {
+        monthA = currentMonth - 1;
+        yearA = currentYear;
+      }
+    }
+
+    try {
+      const result = await this.compareMonths.execute(userId, {
+        monthA,
+        yearA,
+        monthB,
+        yearB,
+      });
+
+      // Check if either month has no data
+      if (result.monthA.totalSpent === 0 && result.monthB.totalSpent === 0) {
+        await this.channelAdapter.sendText(
+          userId,
+          `Tháng ${monthA} và tháng ${monthB} không có khoản chi nào để so sánh.`,
+        );
+        return;
+      }
+
+      if (result.monthA.totalSpent === 0) {
+        await this.channelAdapter.sendText(
+          userId,
+          `Tháng ${monthA} không có khoản chi nào để so sánh.`,
+        );
+        return;
+      }
+
+      if (result.monthB.totalSpent === 0) {
+        await this.channelAdapter.sendText(
+          userId,
+          `Tháng ${monthB} không có khoản chi nào để so sánh.`,
+        );
+        return;
+      }
+
+      // Format the reply
+      const lines: string[] = [];
+
+      // Header
+      lines.push(`📊 So sánh chi tiêu ${result.monthA.label} vs ${result.monthB.label}`);
+
+      // Totals
+      const totalA = result.monthA.totalSpent.toLocaleString("vi-VN");
+      const totalB = result.monthB.totalSpent.toLocaleString("vi-VN");
+      lines.push(`${result.monthA.label}: ${totalA}đ | ${result.monthB.label}: ${totalB}đ`);
+
+      // Diff line
+      const diff = result.totalDifference;
+      const diffSign = diff > 0 ? "+" : diff < 0 ? "" : "";
+      const diffFormatted = diff.toLocaleString("vi-VN");
+
+      if (result.totalPercentChange === null) {
+        lines.push(`Chênh lệch: ${diffSign}${diffFormatted}đ (Mới)`);
+      } else {
+        const percentSign = result.totalPercentChange > 0 ? "+" : result.totalPercentChange < 0 ? "" : "";
+        const percentFormatted = Math.round(result.totalPercentChange);
+        lines.push(`Chênh lệch: ${diffSign}${diffFormatted}đ (${percentSign}${percentFormatted}%)`);
+      }
+
+      // Category breakdown (already sorted by |absoluteDiff| desc)
+      lines.push("");
+      for (const cat of result.categoryDiffs) {
+        const catAmountA = cat.amountA.toLocaleString("vi-VN");
+        const catAmountB = cat.amountB.toLocaleString("vi-VN");
+        const catDiff = cat.absoluteDiff;
+        const catDiffSign = catDiff > 0 ? "+" : catDiff < 0 ? "" : "";
+        const catDiffFormatted = catDiff.toLocaleString("vi-VN");
+
+        let indicator: string;
+        if (catDiff > 0) {
+          indicator = "↑";
+        } else if (catDiff < 0) {
+          indicator = "↓";
+        } else {
+          indicator = "→";
+        }
+
+        lines.push(`• ${cat.category}: ${catAmountA}đ → ${catAmountB}đ (${catDiffSign}${catDiffFormatted}đ, ${indicator})`);
+      }
+
+      // Webview link
+      const rangeA = this.getMonthDateRange(yearA, monthA);
+      const rangeB = this.getMonthDateRange(yearB, monthB);
+      const token = this.tokenService.generateReportToken({
+        userId,
+        from: rangeA.from.toISOString(),
+        to: rangeB.to.toISOString(),
+      });
+      const webviewUrl = `${this.config.webviewBaseUrl}/compare?token=${token}&monthA=${monthA}&yearA=${yearA}&monthB=${monthB}&yearB=${yearB}`;
+
+      lines.push("");
+      lines.push(`🔗 Sếp xem chi tiết giúp em tại đây: ${webviewUrl}`);
+
+      this.logger.log(`[Compare] user=${userId} monthA=${monthA}/${yearA} monthB=${monthB}/${yearB} → ${webviewUrl}`);
+      await this.channelAdapter.sendText(userId, lines.join("\n"));
+    } catch (error) {
+      if (error instanceof SameMonthError) {
+        await this.channelAdapter.sendText(
+          userId,
+          "Sếp cần chọn hai tháng khác nhau để so sánh nhé!",
+        );
+        return;
+      }
+      if (error instanceof InvalidMonthError) {
+        await this.channelAdapter.sendText(
+          userId,
+          "Tháng không hợp lệ, sếp nhập tháng từ 1 đến 12 nhé!",
+        );
+        return;
+      }
+      this.logger.error("Compare months failed", error);
+      await this.channelAdapter.sendText(userId, SERVICE_UNAVAILABLE_MSG);
+    }
+  }
+
+  private getMonthDateRange(year: number, month: number): { from: Date; to: Date } {
+    const from = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const to = new Date(year, month, 0, 23, 59, 59, 999);
+    return { from, to };
   }
 }

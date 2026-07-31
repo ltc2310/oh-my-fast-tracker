@@ -4,6 +4,7 @@ import { GenerateWeeklyReport } from '../../src/application/usecases/GenerateWee
 import { ExcelGeneratorService } from '../../src/application/services/ExcelGeneratorService';
 import { TokenService } from '../../src/domain/ports/TokenService';
 import { WeeklySummary } from '../../src/domain/entities/WeeklySummary';
+import { Response } from 'express';
 
 describe('ExportController', () => {
   let controller: ExportController;
@@ -88,7 +89,7 @@ describe('ExportController', () => {
       mockGenerateWeeklyReport.execute.mockResolvedValue(mockSummary);
       mockExcelGenerator.generate.mockResolvedValue(mockBuffer);
 
-      await controller.exportExcel(validToken, mockResponse as any);
+      await controller.exportExcel(validToken, mockResponse as unknown as Response);
 
       expect(mockTokenService.verifyReportToken).toHaveBeenCalledWith(validToken);
       expect(mockGenerateWeeklyReport.execute).toHaveBeenCalledWith(
@@ -114,13 +115,13 @@ describe('ExportController', () => {
   describe('missing token returns 400', () => {
     it('should throw BadRequestException when token is undefined', async () => {
       await expect(
-        controller.exportExcel(undefined, mockResponse as any),
+        controller.exportExcel(undefined, mockResponse as unknown as Response),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException with "Missing token" message when token is empty string', async () => {
       await expect(
-        controller.exportExcel('', mockResponse as any),
+        controller.exportExcel('', mockResponse as unknown as Response),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -132,7 +133,7 @@ describe('ExportController', () => {
       });
 
       await expect(
-        controller.exportExcel('expired-token', mockResponse as any),
+        controller.exportExcel('expired-token', mockResponse as unknown as Response),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -142,7 +143,7 @@ describe('ExportController', () => {
       });
 
       await expect(
-        controller.exportExcel('bad-token', mockResponse as any),
+        controller.exportExcel('bad-token', mockResponse as unknown as Response),
       ).rejects.toThrow('Report not found or link expired');
     });
   });
@@ -153,7 +154,7 @@ describe('ExportController', () => {
       mockTokenService.verifyReportToken.mockReturnValue(tokenPayload);
       mockGenerateWeeklyReport.execute.mockRejectedValue(error);
 
-      await controller.exportExcel(validToken, mockResponse as any);
+      await controller.exportExcel(validToken, mockResponse as unknown as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -167,7 +168,7 @@ describe('ExportController', () => {
       mockGenerateWeeklyReport.execute.mockResolvedValue(mockSummary);
       mockExcelGenerator.generate.mockRejectedValue(error);
 
-      await controller.exportExcel(validToken, mockResponse as any);
+      await controller.exportExcel(validToken, mockResponse as unknown as Response);
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -182,7 +183,7 @@ describe('ExportController', () => {
 
       const loggerSpy = jest.spyOn(Logger.prototype, 'error');
 
-      await controller.exportExcel(validToken, mockResponse as any);
+      await controller.exportExcel(validToken, mockResponse as unknown as Response);
 
       expect(loggerSpy).toHaveBeenCalledWith('Failed to generate report', error);
     });

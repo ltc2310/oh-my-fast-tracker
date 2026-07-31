@@ -5,7 +5,15 @@ import { RecordTransaction } from "../../src/application/usecases/RecordTransact
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
 import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
+import { CompareMonths } from "../../src/application/usecases/CompareMonths";
+import { UndoLastTransaction } from "../../src/application/usecases/UndoLastTransaction";
+import { EditTransaction } from "../../src/application/usecases/EditTransaction";
+import { EditIntentDetector } from "../../src/domain/ports/EditIntentDetector";
+import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
+import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
 import { TrendReport } from "../../src/domain/entities/TrendReport";
+import { ConfigType } from "@nestjs/config";
+import { appConfig } from "../../src/infrastructure/config/app.config";
 
 describe("BotService - Trend Report Routing", () => {
   let botService: BotService;
@@ -65,33 +73,34 @@ describe("BotService - Trend Report Routing", () => {
 
     mockRecordTransaction = {
       execute: jest.fn().mockResolvedValue([]),
-    } as any;
+    } as unknown as jest.Mocked<RecordTransaction>;
 
     mockGenerateWeeklyReport = {
       execute: jest.fn().mockResolvedValue({ total: 0, byCategory: [], transactions: [], from: new Date(), to: new Date() }),
-    } as any;
+    } as unknown as jest.Mocked<GenerateWeeklyReport>;
 
     mockGenerateTrendReport = {
       execute: jest.fn().mockResolvedValue(fakeTrendReport),
-    } as any;
+    } as unknown as jest.Mocked<GenerateTrendReport>;
 
     mockCheckUserAccess = {
       execute: jest.fn().mockResolvedValue({ allowed: true, isFirstMessage: false, user: {} }),
-    } as any;
+    } as unknown as jest.Mocked<CheckUserAccess>;
 
     botService = new BotService(
       mockChannelAdapter,
       mockTokenService,
-      mockConfig as any,
-      { detect: jest.fn().mockResolvedValue(null) } as any, // EditIntentDetector
-      { findLastByUser: jest.fn().mockResolvedValue(null) } as any, // TransactionRepository
-      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as any, // NotificationPreferenceRepository
+      mockConfig as unknown as ConfigType<typeof appConfig>,
+      { detect: jest.fn().mockResolvedValue(null) } as unknown as EditIntentDetector,
+      { findLastByUser: jest.fn().mockResolvedValue(null) } as unknown as TransactionRepository,
+      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
       mockCheckUserAccess,
-      { execute: jest.fn().mockResolvedValue(null) } as any, // UndoLastTransaction
-      { execute: jest.fn().mockResolvedValue(null) } as any, // EditTransaction
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as UndoLastTransaction,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
     );
 
     botService.onModuleInit();
@@ -146,14 +155,10 @@ describe("BotService - Trend Report Routing", () => {
     });
   });
 
-  describe("Unsupported compare months", () => {
-    it('"so sánh tháng 1 với tháng 6" replies "chưa hỗ trợ", no parser/usecase call', async () => {
+  describe("Compare months routing", () => {
+    it('"so sánh tháng 1 với tháng 6" routes to compare handler, not trend/weekly/parser', async () => {
       await sendMessage("so sánh tháng 1 với tháng 6");
 
-      expect(mockChannelAdapter.sendText).toHaveBeenCalledWith(
-        "user-1",
-        expect.stringContaining("chưa"),
-      );
       expect(mockGenerateTrendReport.execute).not.toHaveBeenCalled();
       expect(mockGenerateWeeklyReport.execute).not.toHaveBeenCalled();
       expect(mockRecordTransaction.execute).not.toHaveBeenCalled();

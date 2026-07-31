@@ -93,11 +93,11 @@ export class AIParser implements Parser {
       }
 
       return parsed
-        .filter((item: any) => item && item.amount && item.category)
-        .map((item: any) => ({
+        .filter((item: Record<string, unknown>) => item && item.amount && item.category)
+        .map((item: Record<string, unknown>) => ({
           amount: Number(item.amount),
-          category: item.category,
-          note: item.note ?? text.trim(),
+          category: item.category as string,
+          note: (item.note as string) ?? text.trim(),
         }));
     } catch (error) {
       this.logger.error(`AI parsing failed: ${(error as Error).message}`);

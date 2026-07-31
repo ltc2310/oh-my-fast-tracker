@@ -1,0 +1,275 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create MonthComparisonResult and CategoryDiff entities": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153075
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483163836
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484890328
+      }
+    ],
+    "1.2 Add formatCompareExportFilename to filename-formatter.ts": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153124
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483164645
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484890895
+      }
+    ],
+    "2.1 Implement CompareMonths use case": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153156
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484900387
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484991206
+      }
+    ],
+    "3. Checkpoint - Use case compiles and tests pass": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153234
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485014198
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485081046
+      }
+    ],
+    "4.1 Implement ExcelCompareGeneratorService": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153263
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485101995
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485335104
+      }
+    ],
+    "5.1 Implement CompareReportController": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153307
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485102796
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485335896
+      }
+    ],
+    "6.1 Update BotService with compare months handler": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153340
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485342579
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486214679
+      }
+    ],
+    "7. Checkpoint - Bot integration tests pass": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153372
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486221016
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486343966
+      }
+    ],
+    "8.1 Register CompareMonths and ExcelCompareGeneratorService in ApplicationModule": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153407
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486349731
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486426119
+      }
+    ],
+    "8.2 Register CompareReportController in HttpModule": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153438
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486350699
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486428251
+      }
+    ],
+    "10.1 Update HELP_MSG in BotService": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153472
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486435456
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486519189
+      }
+    ],
+    "10.2 Update README.md with compare API documentation": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153504
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486436266
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486519704
+      }
+    ],
+    "11. Final checkpoint - All tests pass": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785483153541
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486526401
+      },
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486580758
+      }
+    ],
+    "1. Domain entities and filename formatter": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484890946
+      }
+    ],
+    "2. CompareMonths use case": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785484991267
+      }
+    ],
+    "4. ExcelCompareGeneratorService": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485335149
+      }
+    ],
+    "5. CompareReportController": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785485335953
+      }
+    ],
+    "6. BotService integration": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486214714
+      }
+    ],
+    "8. Module registration and wiring": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486428285
+      }
+    ],
+    "10. Documentation updates": [
+      {
+        "executionId": "718b1cd5-637b-4547-b485-f10addfc40ff",
+        "chatSessionId": "sess_66742d57-b535-458c-b0d1-04e84df239fc",
+        "timestamp": 1785486519741
+      }
+    ]
+  }
+}

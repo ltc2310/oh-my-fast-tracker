@@ -24,3 +24,16 @@ export function formatTrendExportFilename(
 ): string {
   return `bao-cao-xu-huong-${userId}-${periodStart}-${periodEnd}.xlsx`;
 }
+
+/**
+ * Formats the export filename for the comparison report Excel file.
+ * Pattern: so-sanh-thang-{monthA}-{yearA}-vs-{monthB}-{yearB}.xlsx
+ */
+export function formatCompareExportFilename(
+  monthA: number,
+  yearA: number,
+  monthB: number,
+  yearB: number,
+): string {
+  return `so-sanh-thang-${monthA}-${yearA}-vs-${monthB}-${yearB}.xlsx`;
+}

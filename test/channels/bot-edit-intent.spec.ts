@@ -9,7 +9,11 @@ import { GenerateTrendReport } from "../../src/application/usecases/GenerateTren
 import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
 import { UndoLastTransaction } from "../../src/application/usecases/UndoLastTransaction";
 import { EditTransaction } from "../../src/application/usecases/EditTransaction";
+import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { Transaction } from "../../src/domain/entities/Transaction";
+import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
+import { ConfigType } from "@nestjs/config";
+import { appConfig } from "../../src/infrastructure/config/app.config";
 
 describe("BotService - Edit Intent Flow", () => {
   let botService: BotService;
@@ -66,38 +70,39 @@ describe("BotService - Edit Intent Flow", () => {
 
     mockRecordTransaction = {
       execute: jest.fn().mockResolvedValue([]),
-    } as any;
+    } as unknown as jest.Mocked<RecordTransaction>;
 
     mockGenerateWeeklyReport = {
       execute: jest.fn().mockResolvedValue({ total: 0, byCategory: [], transactions: [] }),
-    } as any;
+    } as unknown as jest.Mocked<GenerateWeeklyReport>;
 
     mockGenerateTrendReport = {
       execute: jest.fn().mockResolvedValue({}),
-    } as any;
+    } as unknown as jest.Mocked<GenerateTrendReport>;
 
     mockCheckUserAccess = {
       execute: jest.fn().mockResolvedValue({ allowed: true, isFirstMessage: false, user: {} }),
-    } as any;
+    } as unknown as jest.Mocked<CheckUserAccess>;
 
     mockUndoLastTransaction = {
       execute: jest.fn().mockResolvedValue(null),
-    } as any;
+    } as unknown as jest.Mocked<UndoLastTransaction>;
 
     mockEditTransaction = {
       execute: jest.fn().mockResolvedValue({ ...fakeTransaction, amount: 30000 }),
-    } as any;
+    } as unknown as jest.Mocked<EditTransaction>;
 
     botService = new BotService(
       mockChannelAdapter,
       mockTokenService,
-      mockConfig as any,
+      mockConfig as unknown as ConfigType<typeof appConfig>,
       mockEditIntentDetector,
-      mockTransactionRepository as any,
-      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as any, // NotificationPreferenceRepository
+      mockTransactionRepository as unknown as TransactionRepository,
+      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
       mockCheckUserAccess,
       mockUndoLastTransaction,
       mockEditTransaction,

@@ -1,4 +1,6 @@
 import { SupabaseNotificationPreferenceRepository } from '../../src/infrastructure/repositories/SupabaseNotificationPreferenceRepository';
+import { ConfigType } from '@nestjs/config';
+import { supabaseConfig } from '../../src/infrastructure/config/app.config';
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => mockClient),
@@ -28,7 +30,7 @@ describe('SupabaseNotificationPreferenceRepository', () => {
     repo = new SupabaseNotificationPreferenceRepository({
       url: 'http://localhost:54321',
       key: 'test-key',
-    } as any);
+    } as unknown as ConfigType<typeof supabaseConfig>);
   });
 
   describe('findByUserId', () => {
@@ -139,7 +141,7 @@ describe('SupabaseNotificationPreferenceRepository', () => {
 
       await repo.upsert('user-1', { dailyReminder: true });
 
-      const upsertArg = (mockUpsert.mock.calls as any[][])[0][0];
+      const upsertArg = (mockUpsert.mock.calls as unknown[][])[0][0];
       expect(upsertArg).toHaveProperty('daily_reminder', true);
       expect(upsertArg).not.toHaveProperty('weekly_digest');
       expect(upsertArg).not.toHaveProperty('monthly_summary');

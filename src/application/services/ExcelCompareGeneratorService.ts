@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { TrendReport } from '../../domain/entities/TrendReport';
-import { MonthlyBreakdown } from '../../domain/entities/MonthlyBreakdown';
+import { MonthComparisonResult } from '../../domain/entities/MonthComparisonResult';
 import { Transaction } from '../../domain/entities/Transaction';
 import { formatVND } from './vnd-formatter';
 
-// Reuse the same styling constants as ExcelGeneratorService for visual consistency
+// Reuse the same styling constants as ExcelTrendGeneratorService for visual consistency
 const HEADER_FILL: ExcelJS.Fill = {
   type: 'pattern',
   pattern: 'solid',
@@ -34,74 +33,39 @@ const ALL_BORDERS: Partial<ExcelJS.Borders> = {
 };
 
 @Injectable()
-export class ExcelTrendGeneratorService {
-  async generate(report: TrendReport): Promise<Buffer> {
+export class ExcelCompareGeneratorService {
+  async generate(result: MonthComparisonResult): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
 
-    // 1. Overview tab ("Tổng quan")
-    this.buildOverviewTab(workbook, report);
+    // Tab 1: Comparison overview ("So sánh")
+    this.buildComparisonTab(workbook, result);
 
-    // 2. Monthly detail tabs (chronological order)
-    for (const breakdown of report.monthlyBreakdown) {
-      this.buildMonthlyTab(workbook, breakdown);
-    }
+    // Tab 2: Month A details
+    this.buildMonthDetailTab(workbook, result.monthA);
+
+    // Tab 3: Month B details
+    this.buildMonthDetailTab(workbook, result.monthB);
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
 
-  private buildOverviewTab(workbook: ExcelJS.Workbook, report: TrendReport): void {
-    const worksheet = workbook.addWorksheet('Tổng quan');
-    const columnCount = 2;
+  private buildComparisonTab(workbook: ExcelJS.Workbook, result: MonthComparisonResult): void {
+    const worksheet = workbook.addWorksheet('So sánh');
+    const columnCount = 5;
 
     // --- Header section ---
-    this.buildOverviewHeader(worksheet, report, columnCount);
-
-    // --- Summary stats table ---
-    this.buildSummaryStatsTable(worksheet, report);
-
-    // --- Top growing categories table ---
-    this.buildTopCategoriesTable(
-      worksheet,
-      'DANH MỤC TĂNG MẠNH NHẤT',
-      report.topGrowingCategories.map((c) => ({
-        name: c.category,
-        changePercent: c.changePercent,
-      })),
-    );
-
-    // --- Top shrinking categories table ---
-    this.buildTopCategoriesTable(
-      worksheet,
-      'DANH MỤC GIẢM MẠNH NHẤT',
-      report.topShrinkingCategories.map((c) => ({
-        name: c.category,
-        changePercent: c.changePercent,
-      })),
-    );
-
-    this.autoSizeColumns(worksheet);
-  }
-
-  private buildOverviewHeader(
-    worksheet: ExcelJS.Worksheet,
-    report: TrendReport,
-    columnCount: number,
-  ): void {
-    // Row 1: Title
-    const titleRow = worksheet.addRow(['BÁO CÁO XU HƯỚNG CHI TIÊU']);
+    const titleRow = worksheet.addRow(['SO SÁNH CHI TIÊU']);
     worksheet.mergeCells(titleRow.number, 1, titleRow.number, columnCount);
     const titleCell = titleRow.getCell(1);
     titleCell.font = { bold: true, size: 16 };
     titleCell.alignment = { horizontal: 'center' };
 
-    // Row 2: Period string
-    const periodStr = `Từ ${this.formatDateVN(report.periodStart)} đến ${this.formatDateVN(report.periodEnd)}`;
-    const periodRow = worksheet.addRow([periodStr]);
-    worksheet.mergeCells(periodRow.number, 1, periodRow.number, columnCount);
-    const periodCell = periodRow.getCell(1);
-    periodCell.font = { italic: true, size: 11 };
-    periodCell.alignment = { horizontal: 'center' };
+    const subtitleRow = worksheet.addRow([`${result.monthA.label} vs ${result.monthB.label}`]);
+    worksheet.mergeCells(subtitleRow.number, 1, subtitleRow.number, columnCount);
+    const subtitleCell = subtitleRow.getCell(1);
+    subtitleCell.font = { italic: true, size: 11 };
+    subtitleCell.alignment = { horizontal: 'center' };
 
     // Row 3: Generation date (Asia/Ho_Chi_Minh timezone)
     const genDateStr = this.formatDateTimeVN(new Date());
@@ -113,102 +77,91 @@ export class ExcelTrendGeneratorService {
 
     // Empty separator
     worksheet.addRow([]);
-  }
 
-  private buildSummaryStatsTable(
-    worksheet: ExcelJS.Worksheet,
-    report: TrendReport,
-  ): void {
-    // Section header
-    const sectionRow = worksheet.addRow(['TỔNG QUAN']);
-    sectionRow.getCell(1).font = { bold: true, size: 13 };
+    // --- Comparison table ---
+    const headerRow = worksheet.addRow(['Danh mục', result.monthA.label, result.monthB.label, 'Chênh lệch', '% Thay đổi']);
+    this.applyHeaderStyle(headerRow, columnCount);
 
-    // Table header
-    const headerRow = worksheet.addRow(['Chỉ số', 'Giá trị']);
-    this.applyHeaderStyle(headerRow, 2);
+    // Category diff rows sorted by |absoluteDiff| descending
+    const sortedDiffs = [...result.categoryDiffs].sort(
+      (a, b) => Math.abs(b.absoluteDiff) - Math.abs(a.absoluteDiff),
+    );
 
-    // Direction symbol
-    const directionSymbol = this.getDirectionSymbol(report.overview.overallDirection);
-    const directionLabel = this.getDirectionLabel(report.overview.overallDirection);
+    for (let i = 0; i < sortedDiffs.length; i++) {
+      const diff = sortedDiffs[i];
+      const percentDisplay = diff.percentChange === null
+        ? 'Mới'
+        : `${diff.percentChange >= 0 ? '+' : ''}${diff.percentChange.toFixed(1)}%`;
 
-    // Data rows
-    const statsRows = [
-      ['Tổng chi tiêu', formatVND(report.overview.totalSpent)],
-      ['Trung bình/tháng', formatVND(report.overview.averageMonthlySpent)],
-      ['Tháng cao nhất', `${this.formatMonthLabel(report.overview.highestMonth.month)} (${formatVND(report.overview.highestMonth.amount)})`],
-      ['Tháng thấp nhất', `${this.formatMonthLabel(report.overview.lowestMonth.month)} (${formatVND(report.overview.lowestMonth.amount)})`],
-      ['Xu hướng chung', `${directionSymbol} ${directionLabel}`],
-      ['Thay đổi', `${report.overview.overallChangePercent >= 0 ? '+' : ''}${report.overview.overallChangePercent.toFixed(1)}%`],
-    ];
+      const row = worksheet.addRow([
+        diff.category,
+        formatVND(diff.amountA),
+        formatVND(diff.amountB),
+        formatVND(diff.absoluteDiff),
+        percentDisplay,
+      ]);
 
-    for (const [label, value] of statsRows) {
-      const row = worksheet.addRow([label, value]);
-      for (let col = 1; col <= 2; col++) {
+      for (let col = 1; col <= columnCount; col++) {
         row.getCell(col).border = ALL_BORDERS;
+      }
+
+      // Apply alternating row styling
+      if (i % 2 === 1) {
+        for (let col = 1; col <= columnCount; col++) {
+          row.getCell(col).fill = ALTERNATING_ROW_FILL;
+        }
       }
     }
 
-    // Empty separator
-    worksheet.addRow([]);
+    // "Tổng cộng" summary row
+    const totalPercentDisplay = result.totalPercentChange === null
+      ? 'Mới'
+      : `${result.totalPercentChange >= 0 ? '+' : ''}${result.totalPercentChange.toFixed(1)}%`;
+
+    const sumRow = worksheet.addRow([
+      'Tổng cộng',
+      formatVND(result.monthA.totalSpent),
+      formatVND(result.monthB.totalSpent),
+      formatVND(result.totalDifference),
+      totalPercentDisplay,
+    ]);
+
+    for (let col = 1; col <= columnCount; col++) {
+      sumRow.getCell(col).border = ALL_BORDERS;
+      sumRow.getCell(col).fill = ACCENT_FILL;
+    }
+    sumRow.getCell(1).font = { bold: true };
+    sumRow.getCell(4).font = { bold: true };
+    sumRow.getCell(5).font = { bold: true };
+
+    this.autoSizeColumns(worksheet);
   }
 
-  private buildTopCategoriesTable(
-    worksheet: ExcelJS.Worksheet,
-    title: string,
-    categories: Array<{ name: string; changePercent: number }>,
-  ): void {
-    // Section header
-    const sectionRow = worksheet.addRow([title]);
-    sectionRow.getCell(1).font = { bold: true, size: 11 };
-
-    if (categories.length === 0) {
-      worksheet.addRow(['Không có dữ liệu']);
-      worksheet.addRow([]);
-      return;
-    }
-
-    // Table header
-    const headerRow = worksheet.addRow(['Danh mục', 'Thay đổi (%)']);
-    this.applyHeaderStyle(headerRow, 2);
-
-    // Data rows
-    for (const cat of categories) {
-      const sign = cat.changePercent >= 0 ? '+' : '';
-      const row = worksheet.addRow([cat.name, `${sign}${cat.changePercent.toFixed(1)}%`]);
-      for (let col = 1; col <= 2; col++) {
-        row.getCell(col).border = ALL_BORDERS;
-      }
-    }
-
-    // Empty separator
-    worksheet.addRow([]);
-  }
-
-  private buildMonthlyTab(
+  private buildMonthDetailTab(
     workbook: ExcelJS.Workbook,
-    breakdown: MonthlyBreakdown,
+    monthData: MonthComparisonResult['monthA'],
   ): void {
-    const sheetName = this.formatSheetName(breakdown.month);
+    const sheetName = `Tháng ${monthData.month}-${monthData.year}`;
     const worksheet = workbook.addWorksheet(sheetName);
 
     // --- Category breakdown table ---
-    this.buildCategoryBreakdownTable(worksheet, breakdown);
+    this.buildCategoryBreakdownTable(worksheet, monthData);
 
     // Empty separator
     worksheet.addRow([]);
 
     // --- Transaction detail table ---
-    this.buildTransactionDetailTable(worksheet, breakdown);
+    this.buildTransactionDetailTable(worksheet, monthData.transactions);
 
     this.autoSizeColumns(worksheet);
   }
 
   private buildCategoryBreakdownTable(
     worksheet: ExcelJS.Worksheet,
-    breakdown: MonthlyBreakdown,
+    monthData: MonthComparisonResult['monthA'],
   ): void {
     // Section header
-    const sectionRow = worksheet.addRow([breakdown.monthLabel]);
+    const sectionRow = worksheet.addRow([monthData.label]);
     sectionRow.getCell(1).font = { bold: true, size: 13 };
 
     // Table header
@@ -216,11 +169,10 @@ export class ExcelTrendGeneratorService {
     this.applyHeaderStyle(headerRow, 2);
 
     // Get categories sorted by amount descending
-    const categories = Object.entries(breakdown.byCategory)
+    const categories = Object.entries(monthData.byCategory)
       .sort((a, b) => b[1] - a[1]);
 
     if (categories.length === 0) {
-      // Empty table with note
       const emptyRow = worksheet.addRow(['Không có giao dịch', '']);
       for (let col = 1; col <= 2; col++) {
         emptyRow.getCell(col).border = ALL_BORDERS;
@@ -234,11 +186,20 @@ export class ExcelTrendGeneratorService {
         row.getCell(col).border = ALL_BORDERS;
       }
     }
+
+    // "Tổng cộng" row for category breakdown
+    const totalRow = worksheet.addRow(['Tổng cộng', formatVND(monthData.totalSpent)]);
+    for (let col = 1; col <= 2; col++) {
+      totalRow.getCell(col).border = ALL_BORDERS;
+      totalRow.getCell(col).fill = ACCENT_FILL;
+    }
+    totalRow.getCell(1).font = { bold: true };
+    totalRow.getCell(2).font = { bold: true };
   }
 
   private buildTransactionDetailTable(
     worksheet: ExcelJS.Worksheet,
-    breakdown: MonthlyBreakdown,
+    transactions: Transaction[],
   ): void {
     // Section header
     const detailHeaderRow = worksheet.addRow(['CHI TIẾT GIAO DỊCH']);
@@ -248,10 +209,7 @@ export class ExcelTrendGeneratorService {
     const headerRow = worksheet.addRow(['STT', 'Ngày', 'Danh mục', 'Ghi chú', 'Số tiền']);
     this.applyHeaderStyle(headerRow, 5);
 
-    const transactions = breakdown.transactions ?? [];
-
     if (transactions.length === 0) {
-      // Empty table — headers only
       return;
     }
 
@@ -262,8 +220,6 @@ export class ExcelTrendGeneratorService {
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
 
-    // Data rows with sequential STT
-    const dataStartRow = headerRow.number + 1;
     let totalExpense = 0;
     let totalIncome = 0;
 
@@ -288,7 +244,7 @@ export class ExcelTrendGeneratorService {
         row.getCell(col).border = ALL_BORDERS;
       }
 
-      // Apply alternating row styling (odd data rows: i=1,3,5...)
+      // Apply alternating row styling
       if (i % 2 === 1) {
         for (let col = 1; col <= 5; col++) {
           row.getCell(col).fill = ALTERNATING_ROW_FILL;
@@ -351,37 +307,6 @@ export class ExcelTrendGeneratorService {
     });
   }
 
-  /**
-   * Formats a month key "YYYY-MM" into sheet name "T{M}-{YYYY}".
-   * Ensures no forbidden characters and stays within 31-char limit.
-   */
-  private formatSheetName(monthKey: string): string {
-    const [year, monthStr] = monthKey.split('-');
-    const month = parseInt(monthStr, 10);
-    return `T${month}-${year}`;
-  }
-
-  /**
-   * Formats an ISO date string "YYYY-MM-DD" into "dd/MM/yyyy" for display.
-   */
-  private formatDateVN(isoDate: string): string {
-    const [year, month, day] = isoDate.split('-');
-    return `${day}/${month}/${year}`;
-  }
-
-  /**
-   * Formats a month key "YYYY-MM" into a readable label like "Tháng 2/2026".
-   */
-  private formatMonthLabel(monthKey: string): string {
-    if (!monthKey) return '';
-    const [year, monthStr] = monthKey.split('-');
-    const month = parseInt(monthStr, 10);
-    return `Tháng ${month}/${year}`;
-  }
-
-  /**
-   * Formats a Date into "dd/MM/yyyy" display format.
-   */
   private formatDateDMY(date: Date): string {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -389,9 +314,6 @@ export class ExcelTrendGeneratorService {
     return `${day}/${month}/${year}`;
   }
 
-  /**
-   * Formats the current date/time in Asia/Ho_Chi_Minh timezone.
-   */
   private formatDateTimeVN(date: Date): string {
     const formatOptions: Intl.DateTimeFormatOptions = {
       timeZone: 'Asia/Ho_Chi_Minh',
@@ -410,27 +332,5 @@ export class ExcelTrendGeneratorService {
     }
 
     return `${partsMap.day}/${partsMap.month}/${partsMap.year} ${partsMap.hour}:${partsMap.minute}`;
-  }
-
-  private getDirectionSymbol(direction: 'increasing' | 'decreasing' | 'stable'): string {
-    switch (direction) {
-      case 'increasing':
-        return '↑';
-      case 'decreasing':
-        return '↓';
-      case 'stable':
-        return '→';
-    }
-  }
-
-  private getDirectionLabel(direction: 'increasing' | 'decreasing' | 'stable'): string {
-    switch (direction) {
-      case 'increasing':
-        return 'Tăng';
-      case 'decreasing':
-        return 'Giảm';
-      case 'stable':
-        return 'Ổn định';
-    }
   }
 }

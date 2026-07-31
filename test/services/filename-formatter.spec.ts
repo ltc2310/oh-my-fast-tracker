@@ -1,6 +1,7 @@
 import {
   formatExportFilename,
   formatTrendExportFilename,
+  formatCompareExportFilename,
 } from '../../src/application/services/filename-formatter';
 
 describe('formatExportFilename', () => {
@@ -55,5 +56,29 @@ describe('formatTrendExportFilename', () => {
   it('should embed the userId between prefix and period dates', () => {
     const result = formatTrendExportFilename('myuser', '2024-01', '2024-06');
     expect(result).toBe('bao-cao-xu-huong-myuser-2024-01-2024-06.xlsx');
+  });
+});
+
+describe('formatCompareExportFilename', () => {
+  it('should return correct pattern with monthA, yearA, monthB, yearB', () => {
+    expect(formatCompareExportFilename(7, 2025, 8, 2025)).toBe(
+      'so-sanh-thang-7-2025-vs-8-2025.xlsx',
+    );
+  });
+
+  it('should produce .xlsx extension', () => {
+    expect(formatCompareExportFilename(1, 2024, 12, 2024)).toMatch(/\.xlsx$/);
+  });
+
+  it('should include so-sanh-thang prefix', () => {
+    expect(formatCompareExportFilename(3, 2025, 5, 2025)).toMatch(
+      /^so-sanh-thang-/,
+    );
+  });
+
+  it('should handle cross-year comparison', () => {
+    expect(formatCompareExportFilename(12, 2024, 1, 2025)).toBe(
+      'so-sanh-thang-12-2024-vs-1-2025.xlsx',
+    );
   });
 });

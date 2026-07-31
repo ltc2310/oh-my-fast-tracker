@@ -243,6 +243,8 @@ npm run migrate   # applies all SQL files in order
 | GET | `/api/report/export?token=xxx` | Download weekly Excel report (.xlsx) |
 | GET | `/api/report/trend?token=xxx&months=6&endMonth=2026-07` | Get trend report JSON (3–12 months) |
 | GET | `/api/report/trend/export?token=xxx&months=6&endMonth=2026-07` | Download trend Excel report (.xlsx) |
+| GET | `/api/report/compare?token=xxx&monthA=7&yearA=2025&monthB=8&yearB=2025` | Get month comparison JSON |
+| GET | `/api/report/compare/export?token=xxx&monthA=7&yearA=2025&monthB=8&yearB=2025` | Download comparison Excel report (.xlsx) |
 
 ### Admin APIs (require `X-Admin-Secret` header)
 
@@ -312,6 +314,80 @@ curl -X POST http://localhost:3000/internal/admin/users/{userId}/block \
 - `401 INVALID_TOKEN` — Missing or invalid token
 - `400 MONTHS_BELOW_MINIMUM` — months < 3
 - `400 MONTHS_LIMIT_EXCEEDED` — months > 12
+
+### Compare Report API Details
+
+#### GET /api/report/compare
+
+Compare spending between two months.
+
+**Query Parameters:**
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| token | Yes | JWT report token |
+| monthA | Yes | First month (1-12) |
+| yearA | Yes | First month's year |
+| monthB | Yes | Second month (1-12) |
+| yearB | Yes | Second month's year |
+
+**Sample Request:**
+```
+GET /api/report/compare?token=xxx&monthA=7&yearA=2025&monthB=8&yearB=2025
+```
+
+**Sample Response:**
+```json
+{
+  "userId": "user-123",
+  "monthA": {
+    "month": 7,
+    "year": 2025,
+    "label": "Tháng 7/2025",
+    "totalSpent": 5000000,
+    "transactionCount": 15,
+    "byCategory": { "Ăn uống": 2000000, "Di chuyển": 1500000 }
+  },
+  "monthB": {
+    "month": 8,
+    "year": 2025,
+    "label": "Tháng 8/2025",
+    "totalSpent": 6000000,
+    "transactionCount": 18,
+    "byCategory": { "Ăn uống": 2500000, "Di chuyển": 1800000 }
+  },
+  "totalDifference": 1000000,
+  "totalPercentChange": 20.0,
+  "categoryDiffs": [
+    {
+      "category": "Ăn uống",
+      "amountA": 2000000,
+      "amountB": 2500000,
+      "absoluteDiff": 500000,
+      "percentChange": 25.0
+    }
+  ],
+  "generatedAt": "2025-07-15T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+| Status | Error Code | Description |
+|--------|-----------|-------------|
+| 401 | INVALID_TOKEN | Missing or invalid token |
+| 400 | MISSING_YEAR | yearA or yearB not provided |
+| 400 | INVALID_MONTH | monthA or monthB outside 1-12 |
+| 400 | SAME_MONTH | Both months are the same |
+| 500 | INTERNAL_ERROR | Unexpected server error |
+
+#### GET /api/report/compare/export
+
+Export month comparison as Excel file.
+
+**Query Parameters:** Same as GET /api/report/compare
+
+**Response:** Excel file (.xlsx) with Content-Disposition attachment header.
+
+Filename pattern: `so-sanh-thang-{monthA}-{yearA}-vs-{monthB}-{yearB}.xlsx`
 
 ## Access Control Flow
 
