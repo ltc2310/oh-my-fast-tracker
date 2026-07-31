@@ -9,6 +9,7 @@ import { AIEditDetector } from "./parsers/AIEditDetector";
 import { HybridEditDetector } from "./parsers/HybridEditDetector";
 import { SupabaseTransactionRepository } from "./repositories/SupabaseTransactionRepository";
 import { SupabaseUserRepository } from "./repositories/SupabaseUserRepository";
+import { SupabaseNotificationPreferenceRepository } from "./repositories/SupabaseNotificationPreferenceRepository";
 import { JwtTokenService } from "./auth/JwtTokenService";
 import { TelegramAdapter } from "./channels/TelegramAdapter";
 import { TelegramNotificationSender } from "./channels/TelegramNotificationSender";
@@ -29,6 +30,7 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     { provide: "Parser", useClass: HybridParser },
     { provide: "TransactionRepository", useClass: SupabaseTransactionRepository },
     { provide: "UserRepository", useClass: SupabaseUserRepository },
+    { provide: "NotificationPreferenceRepository", useClass: SupabaseNotificationPreferenceRepository },
     { provide: "TokenService", useClass: JwtTokenService },
     { provide: "ChannelAdapter", useClass: TelegramAdapter },
     { provide: "NotificationSender", useClass: TelegramNotificationSender },
@@ -40,6 +42,7 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     "Parser",
     "TransactionRepository",
     "UserRepository",
+    "NotificationPreferenceRepository",
     "TokenService",
     "ChannelAdapter",
     "NotificationSender",

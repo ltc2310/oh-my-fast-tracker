@@ -12,6 +12,10 @@ import { EditTransaction } from "./usecases/EditTransaction";
 import { ExcelGeneratorService } from "./services/ExcelGeneratorService";
 import { TrendAnalysisService } from "./services/TrendAnalysisService";
 import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorService";
+import { SendDailyReminder } from "./usecases/SendDailyReminder";
+import { SendWeeklyDigest } from "./usecases/SendWeeklyDigest";
+import { SendMonthlySummary } from "./usecases/SendMonthlySummary";
+import { NotificationScheduler } from "./services/NotificationScheduler";
 
 /**
  * Application module only declares use cases as providers.
@@ -34,6 +38,10 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
+    SendDailyReminder,
+    SendWeeklyDigest,
+    SendMonthlySummary,
+    NotificationScheduler,
   ],
   exports: [
     RecordTransaction,
@@ -49,6 +57,10 @@ import { ExcelTrendGeneratorService } from "./services/ExcelTrendGeneratorServic
     ExcelGeneratorService,
     TrendAnalysisService,
     ExcelTrendGeneratorService,
+    SendDailyReminder,
+    SendWeeklyDigest,
+    SendMonthlySummary,
+    NotificationScheduler,
   ],
 })
 export class ApplicationModule {}

@@ -94,6 +94,7 @@ describe("BotService - Edit Intent Flow", () => {
       mockConfig as any,
       mockEditIntentDetector,
       mockTransactionRepository as any,
+      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as any, // NotificationPreferenceRepository
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,

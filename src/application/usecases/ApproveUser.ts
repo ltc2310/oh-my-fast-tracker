@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { UserRepository } from '../../domain/ports/UserRepository';
 import { NotificationSender } from '../../domain/ports/NotificationSender';
+import { NotificationPreferenceRepository } from '../../domain/ports/NotificationPreferenceRepository';
 import { User } from '../../domain/entities/User';
 
 const APPROVAL_MESSAGE =
@@ -13,6 +14,7 @@ export class ApproveUser {
   constructor(
     @Inject('UserRepository') private readonly userRepository: UserRepository,
     @Inject('NotificationSender') private readonly notificationSender: NotificationSender,
+    @Inject('NotificationPreferenceRepository') private readonly notificationPreferenceRepository: NotificationPreferenceRepository,
   ) {}
 
   async execute(userId: string): Promise<User> {
@@ -37,6 +39,16 @@ export class ApproveUser {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Failed to send approval notification to user ${userId}: ${message}`,
+      );
+    }
+
+    // Create default notification preferences (all enabled) — fire-and-forget
+    try {
+      await this.notificationPreferenceRepository.createDefault(userId);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to create default notification preferences for user ${userId}: ${message}`,
       );
     }
 
