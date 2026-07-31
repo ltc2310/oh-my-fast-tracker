@@ -28,6 +28,12 @@ export const adminConfig = registerAs("admin", () => ({
   secret: requireEnv("ADMIN_API_SECRET"),
 }));
 
+export const notificationConfig = registerAs("notification", () => ({
+  dailyReminderCron: process.env.DAILY_REMINDER_CRON ?? "0 20 * * *",
+  weeklyDigestCron: process.env.WEEKLY_DIGEST_CRON ?? "0 20 * * 0",
+  monthlySummaryCron: process.env.MONTHLY_SUMMARY_CRON ?? "0 20 L * *",
+}));
+
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) throw new Error(`Missing required environment variable: ${key}`);

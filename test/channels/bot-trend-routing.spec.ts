@@ -85,6 +85,7 @@ describe("BotService - Trend Report Routing", () => {
       mockConfig as any,
       { detect: jest.fn().mockResolvedValue(null) } as any, // EditIntentDetector
       { findLastByUser: jest.fn().mockResolvedValue(null) } as any, // TransactionRepository
+      { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as any, // NotificationPreferenceRepository
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,

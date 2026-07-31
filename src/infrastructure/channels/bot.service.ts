@@ -10,6 +10,7 @@ import { EditTransaction } from "../../application/usecases/EditTransaction";
 import { TokenService } from "../../domain/ports/TokenService";
 import { EditIntentDetector, EditIntentResult } from "../../domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
+import { NotificationPreferenceRepository } from "../../domain/ports/NotificationPreferenceRepository";
 import { appConfig } from "../config/app.config";
 import { detectCategory, expandAbbreviations, normalizeSpelling } from "../parsers/RegexParser";
 
@@ -57,6 +58,12 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • sửa ngày hôm qua (đổi ngày)
 • sửa thành cà phê 25k hôm qua (kết hợp)
 
+🔔 Thông báo:
+• bật/tắt nhắc nhở (nhắc ghi chi tiêu)
+• bật/tắt báo cáo tuần (tổng kết tuần)
+• bật/tắt báo cáo tháng (tổng kết tháng)
+• xem thông báo (xem cài đặt)
+
 🔧 Khác:
 • /start — giới thiệu bot
 • /help — xem hướng dẫn này
@@ -73,6 +80,15 @@ const REPORT_REGEX = /báo\s*cáo|chi\s*tiêu\s*(tuần|tháng|ngày|\d)|report/
 
 /** Regex to detect undo/delete last transaction */
 const UNDO_REGEX = /^(xo[áa]|xóa|huỷ|hủy|undo|bỏ)\s*(khoản\s*)?(vừa\s*rồi|cuối|gần\s*nhất|mới\s*nhất|lần\s*trước)?$/i;
+
+/** Notification preference command patterns */
+const NOTIFICATION_ENABLE_DAILY = /^(bật\s*(nhắc\s*nhở|thông\s*báo\s*hàng\s*ngày))$/i;
+const NOTIFICATION_DISABLE_DAILY = /^(tắt\s*(nhắc\s*nhở|thông\s*báo\s*hàng\s*ngày))$/i;
+const NOTIFICATION_ENABLE_WEEKLY = /^bật\s*báo\s*cáo\s*tuần$/i;
+const NOTIFICATION_DISABLE_WEEKLY = /^tắt\s*báo\s*cáo\s*tuần$/i;
+const NOTIFICATION_ENABLE_MONTHLY = /^bật\s*báo\s*cáo\s*tháng$/i;
+const NOTIFICATION_DISABLE_MONTHLY = /^tắt\s*báo\s*cáo\s*tháng$/i;
+const NOTIFICATION_STATUS = /^(xem\s*thông\s*báo|cài\s*đặt\s*thông\s*báo)$/i;
 
 /**
  * Parse a report request message to determine the date range.
@@ -161,6 +177,7 @@ export class BotService implements OnModuleInit {
     @Inject(appConfig.KEY) private readonly config: ConfigType<typeof appConfig>,
     @Inject("EditIntentDetector") private readonly editIntentDetector: EditIntentDetector,
     @Inject("TransactionRepository") private readonly transactionRepository: TransactionRepository,
+    @Inject("NotificationPreferenceRepository") private readonly notificationPreferenceRepository: NotificationPreferenceRepository,
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
@@ -184,6 +201,7 @@ export class BotService implements OnModuleInit {
       }
 
       // Access check
+      let internalUserId: string | undefined;
       try {
         const accessResult = await this.checkUserAccess.execute(
           message.channel,
@@ -199,6 +217,8 @@ export class BotService implements OnModuleInit {
           }
           return;
         }
+
+        internalUserId = accessResult.user.id;
       } catch (error) {
         this.logger.error('Access check failed', error);
         await this.channelAdapter.sendText(message.userId, SERVICE_UNAVAILABLE_MSG);
@@ -209,6 +229,45 @@ export class BotService implements OnModuleInit {
       if (/^\/help$/i.test(message.text.trim())) {
         await this.channelAdapter.sendText(message.userId, HELP_MSG);
         return;
+      }
+
+      // Notification preference commands
+      const trimmedText = message.text.trim();
+      if (internalUserId) {
+        if (NOTIFICATION_ENABLE_DAILY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { dailyReminder: true });
+          await this.channelAdapter.sendText(message.userId, '✅ Đã bật nhắc nhở hàng ngày. Mình sẽ nhắc bạn ghi chi tiêu mỗi tối nếu bạn chưa ghi.');
+          return;
+        }
+        if (NOTIFICATION_DISABLE_DAILY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { dailyReminder: false });
+          await this.channelAdapter.sendText(message.userId, '🔕 Đã tắt nhắc nhở hàng ngày.');
+          return;
+        }
+        if (NOTIFICATION_ENABLE_WEEKLY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { weeklyDigest: true });
+          await this.channelAdapter.sendText(message.userId, '✅ Đã bật báo cáo tuần. Mỗi Chủ nhật bạn sẽ nhận tổng kết chi tiêu tuần.');
+          return;
+        }
+        if (NOTIFICATION_DISABLE_WEEKLY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { weeklyDigest: false });
+          await this.channelAdapter.sendText(message.userId, '🔕 Đã tắt báo cáo tuần.');
+          return;
+        }
+        if (NOTIFICATION_ENABLE_MONTHLY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { monthlySummary: true });
+          await this.channelAdapter.sendText(message.userId, '✅ Đã bật báo cáo tháng. Cuối mỗi tháng bạn sẽ nhận tổng kết chi tiêu.');
+          return;
+        }
+        if (NOTIFICATION_DISABLE_MONTHLY.test(trimmedText)) {
+          await this.notificationPreferenceRepository.upsert(internalUserId, { monthlySummary: false });
+          await this.channelAdapter.sendText(message.userId, '🔕 Đã tắt báo cáo tháng.');
+          return;
+        }
+        if (NOTIFICATION_STATUS.test(trimmedText)) {
+          await this.handleNotificationStatus(message.userId, internalUserId);
+          return;
+        }
       }
 
       // Check compare months pattern first (not yet supported)
@@ -496,5 +555,28 @@ export class BotService implements OnModuleInit {
       (updated.note && updated.note !== updated.category ? ` (${updated.note})` : "") +
       "."
     );
+  }
+
+  private async handleNotificationStatus(channelUserId: string, internalUserId: string): Promise<void> {
+    const pref = await this.notificationPreferenceRepository.findByUserId(internalUserId);
+
+    // Default: all enabled if no record exists
+    const dailyReminder = pref?.dailyReminder ?? true;
+    const weeklyDigest = pref?.weeklyDigest ?? true;
+    const monthlySummary = pref?.monthlySummary ?? true;
+
+    const statusIcon = (enabled: boolean) => enabled ? '✅ Bật' : '🔕 Tắt';
+
+    const reply = [
+      '🔔 Cài đặt thông báo:',
+      '',
+      `• Nhắc nhở hàng ngày: ${statusIcon(dailyReminder)}`,
+      `• Báo cáo tuần: ${statusIcon(weeklyDigest)}`,
+      `• Báo cáo tháng: ${statusIcon(monthlySummary)}`,
+      '',
+      'Gõ "bật/tắt nhắc nhở", "bật/tắt báo cáo tuần", "bật/tắt báo cáo tháng" để thay đổi.',
+    ].join('\n');
+
+    await this.channelAdapter.sendText(channelUserId, reply);
   }
 }

@@ -19,6 +19,7 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 - **14 Vietnamese categories** — Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Tiết kiệm & Đầu tư, Thu nhập, Khác
 - **Income tracking** — "lương 20tr", "thưởng 5tr" stored as negative amounts to separate income from expenses in reports
 - **Undo / Edit / Delete** — "xoá" removes last transaction, "sửa thành 30k" edits amount, "sửa thành ăn uống" changes category, "sửa ngày hôm qua" changes date, or combine: "sửa thành cà phê 25k hôm qua"
+- **Proactive notifications** — Automated scheduled messages via `@nestjs/schedule`: conditional daily reminder (only if no transaction logged today), weekly digest (Sunday summary with top categories and week-over-week comparison), monthly summary (category breakdown and budget status). Each notification type is independently opt-in/opt-out per user.
 
 ## Architecture
 
@@ -28,8 +29,8 @@ NestJS + Clean Architecture (domain → application → infrastructure).
 src/
   domain/           ← Pure interfaces, no dependencies
     constants/        income-categories (income category set)
-    entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport, User
-    ports/            ChannelAdapter, Parser, TokenService, TransactionRepository, UserRepository, NotificationSender
+    entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport, User, NotificationPreference
+    ports/            ChannelAdapter, Parser, TokenService, TransactionRepository, UserRepository, NotificationSender, NotificationPreferenceRepository
 
   application/      ← Use cases, depends only on domain ports
     usecases/
@@ -43,19 +44,23 @@ src/
       ApproveUser.ts            approve pending user + notify
       BlockUser.ts              block a user
       ListPendingUsers.ts       list users by status
+      SendDailyReminder.ts      send conditional daily reminder
+      SendWeeklyDigest.ts       send weekly spending digest
+      SendMonthlySummary.ts     send monthly spending summary
     services/
       ExcelGeneratorService.ts       generate weekly .xlsx reports
       ExcelTrendGeneratorService.ts  generate trend .xlsx (multi-tab)
       TrendAnalysisService.ts        half-period comparison algorithm
+      NotificationScheduler.ts       cron-based notification scheduling
       filename-formatter.ts          format export filenames
       vnd-formatter.ts               format VND currency strings
 
   infrastructure/   ← Concrete implementations
     auth/             JwtTokenService
     channels/         TelegramAdapter, TelegramNotificationSender, BotService
-    config/           NestJS ConfigModule (app, telegram, supabase, auth, ai, admin)
+    config/           NestJS ConfigModule (app, telegram, supabase, auth, ai, admin, notification)
     parsers/          RegexParser, AIParser, HybridParser
-    repositories/     SupabaseTransactionRepository, SupabaseUserRepository
+    repositories/     SupabaseTransactionRepository, SupabaseUserRepository, SupabaseNotificationPreferenceRepository
     http/
       controllers/    HealthController, ReportController, ExportController, TrendReportController, AdminUserController
       guards/         AdminSecretGuard
@@ -76,6 +81,7 @@ User message → TelegramAdapter → BotService
   │     ├─ Pending/Blocked? → Send "waiting for approval" message
   │     └─ Whitelisted?  → Continue ↓
   ├─ /help command?  → Send command reference
+  ├─ Notification prefs? → bật/tắt nhắc nhở, báo cáo tuần/tháng, xem thông báo
   ├─ Undo/Delete?    → UndoLastTransaction → confirm deletion
   ├─ Edit?           → EditIntentDetector → EditTransaction → confirm update
   ├─ Trend request?  → GenerateTrendReport → send summary + links
@@ -83,6 +89,12 @@ User message → TelegramAdapter → BotService
   └─ Expense?        → HybridParser → RecordTransaction → save to Supabase
                           ├─ RegexParser (fast, free, keywords)
                           └─ AIParser (Gemini Flash, semantic fallback)
+
+Scheduled notifications (via @nestjs/schedule):
+  NotificationScheduler
+  ├─ Daily 20:00    → SendDailyReminder → remind if no transactions today
+  ├─ Sunday 20:00   → SendWeeklyDigest → weekly spending summary
+  └─ Last day 20:00 → SendMonthlySummary → monthly category breakdown
 ```
 
 ## Setup
@@ -118,6 +130,9 @@ npm run start:dev      # development with hot-reload
 | `GEMINI_API_KEY` | Google Gemini API key |
 | `GEMINI_MODEL` | Gemini model (default: gemini-2.0-flash-lite) |
 | `ADMIN_API_SECRET` | Secret for Admin API authentication (X-Admin-Secret header) |
+| `DAILY_REMINDER_CRON` | Cron for daily reminder (default: `0 20 * * *` — 8 PM daily) |
+| `WEEKLY_DIGEST_CRON` | Cron for weekly digest (default: `0 20 * * 0` — 8 PM Sunday) |
+| `MONTHLY_SUMMARY_CRON` | Cron for monthly summary (default: `0 20 L * *` — 8 PM last day of month) |
 
 ### Database schema
 
@@ -146,6 +161,16 @@ users (
   updated_at        timestamptz NOT NULL DEFAULT now(),
   UNIQUE(channel, channel_user_id)
 )
+
+notification_preferences (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          uuid NOT NULL REFERENCES users(id) UNIQUE,
+  daily_reminder   boolean NOT NULL DEFAULT true,
+  weekly_digest    boolean NOT NULL DEFAULT true,
+  monthly_summary  boolean NOT NULL DEFAULT true,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+)
 ```
 
 ### Database migrations
@@ -157,6 +182,7 @@ npm run migrate   # applies all SQL files in order
 # sql/schema.sql                        — base transactions table
 # sql/002-whitelist-access-control.sql  — users table + indexes
 # sql/003-backfill-whitelist.sql        — backfill existing users as whitelisted
+# sql/004-notification-preferences.sql  — notification_preferences table + backfill
 ```
 
 ### Seed mock data (for testing trend report)
@@ -198,6 +224,13 @@ npm run migrate   # applies all SQL files in order
 | `báo cáo 6 tháng` | Trend report for last 6 months |
 | `xu hướng chi tiêu 3 tháng` | Trend report for last 3 months |
 | `báo cáo xu hướng` | Trend report (default 6 months) |
+| `bật nhắc nhở` | Enable daily reminder notification |
+| `tắt nhắc nhở` | Disable daily reminder notification |
+| `bật báo cáo tuần` | Enable weekly digest notification |
+| `tắt báo cáo tuần` | Disable weekly digest notification |
+| `bật báo cáo tháng` | Enable monthly summary notification |
+| `tắt báo cáo tháng` | Disable monthly summary notification |
+| `xem thông báo` | View current notification preferences |
 
 ## API Endpoints
 
@@ -307,7 +340,7 @@ npm run test:watch    # watch mode
 - [x] **/start & /help commands** — Onboarding message for new users, full command reference for whitelisted users. *(completed)*
 - [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
 - [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec complete, implementation pending)*
-- [ ] **Proactive notifications** — Daily reminder (conditional), weekly digest, monthly summary via @nestjs/schedule
+- [x] **Proactive notifications** — Daily reminder (conditional), weekly digest, monthly summary via @nestjs/schedule. Per-user opt-in/opt-out with Vietnamese chat commands. *(completed)*
 - [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
 - [ ] **Forward bank notifications** — Forward SMS/app notification messages from banks/MoMo to auto-record transactions
 - [ ] **Voice message support** — Telegram voice → Gemini transcription → HybridParser

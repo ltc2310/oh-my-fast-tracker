@@ -2,12 +2,14 @@ import { NotFoundException } from '@nestjs/common';
 import { ApproveUser } from '../../src/application/usecases/ApproveUser';
 import { UserRepository } from '../../src/domain/ports/UserRepository';
 import { NotificationSender } from '../../src/domain/ports/NotificationSender';
+import { NotificationPreferenceRepository } from '../../src/domain/ports/NotificationPreferenceRepository';
 import { User } from '../../src/domain/entities/User';
 
 describe('ApproveUser', () => {
   let useCase: ApproveUser;
   let mockUserRepo: jest.Mocked<UserRepository>;
   let mockNotificationSender: jest.Mocked<NotificationSender>;
+  let mockNotificationPreferenceRepo: jest.Mocked<NotificationPreferenceRepository>;
 
   const baseUser: User = {
     id: 'user-123',
@@ -32,7 +34,17 @@ describe('ApproveUser', () => {
     mockNotificationSender = {
       sendMessage: jest.fn(),
     };
-    useCase = new ApproveUser(mockUserRepo, mockNotificationSender);
+    mockNotificationPreferenceRepo = {
+      findByUserId: jest.fn(),
+      upsert: jest.fn(),
+      findEligibleUserIds: jest.fn(),
+      createDefault: jest.fn(),
+    };
+    useCase = new ApproveUser(
+      mockUserRepo,
+      mockNotificationSender,
+      mockNotificationPreferenceRepo,
+    );
   });
 
   it('should approve a pending user and return the updated user', async () => {
@@ -44,6 +56,12 @@ describe('ApproveUser', () => {
     mockUserRepo.findById.mockResolvedValue(baseUser);
     mockUserRepo.updateAccessStatus.mockResolvedValue(approvedUser);
     mockNotificationSender.sendMessage.mockResolvedValue(undefined);
+    mockNotificationPreferenceRepo.createDefault.mockResolvedValue({
+      userId: 'user-123',
+      dailyReminder: true,
+      weeklyDigest: true,
+      monthlySummary: true,
+    });
 
     const result = await useCase.execute('user-123');
 
@@ -63,6 +81,7 @@ describe('ApproveUser', () => {
     await expect(useCase.execute('nonexistent-id')).rejects.toThrow(NotFoundException);
     expect(mockUserRepo.updateAccessStatus).not.toHaveBeenCalled();
     expect(mockNotificationSender.sendMessage).not.toHaveBeenCalled();
+    expect(mockNotificationPreferenceRepo.createDefault).not.toHaveBeenCalled();
   });
 
   it('should send approval notification to the user', async () => {
@@ -74,6 +93,12 @@ describe('ApproveUser', () => {
     mockUserRepo.findById.mockResolvedValue(baseUser);
     mockUserRepo.updateAccessStatus.mockResolvedValue(approvedUser);
     mockNotificationSender.sendMessage.mockResolvedValue(undefined);
+    mockNotificationPreferenceRepo.createDefault.mockResolvedValue({
+      userId: 'user-123',
+      dailyReminder: true,
+      weeklyDigest: true,
+      monthlySummary: true,
+    });
 
     await useCase.execute('user-123');
 
@@ -92,6 +117,12 @@ describe('ApproveUser', () => {
     mockUserRepo.findById.mockResolvedValue(baseUser);
     mockUserRepo.updateAccessStatus.mockResolvedValue(approvedUser);
     mockNotificationSender.sendMessage.mockRejectedValue(new Error('Telegram API timeout'));
+    mockNotificationPreferenceRepo.createDefault.mockResolvedValue({
+      userId: 'user-123',
+      dailyReminder: true,
+      weeklyDigest: true,
+      monthlySummary: true,
+    });
 
     const result = await useCase.execute('user-123');
 
@@ -111,6 +142,12 @@ describe('ApproveUser', () => {
       whitelistedAt: new Date(),
     });
     mockNotificationSender.sendMessage.mockResolvedValue(undefined);
+    mockNotificationPreferenceRepo.createDefault.mockResolvedValue({
+      userId: 'user-123',
+      dailyReminder: true,
+      weeklyDigest: true,
+      monthlySummary: true,
+    });
 
     const result = await useCase.execute('user-123');
 
@@ -120,5 +157,46 @@ describe('ApproveUser', () => {
       'whitelisted',
       expect.any(Date),
     );
+  });
+
+  it('should create default notification preferences on approval', async () => {
+    const approvedUser: User = {
+      ...baseUser,
+      accessStatus: 'whitelisted',
+      whitelistedAt: new Date(),
+    };
+    mockUserRepo.findById.mockResolvedValue(baseUser);
+    mockUserRepo.updateAccessStatus.mockResolvedValue(approvedUser);
+    mockNotificationSender.sendMessage.mockResolvedValue(undefined);
+    mockNotificationPreferenceRepo.createDefault.mockResolvedValue({
+      userId: 'user-123',
+      dailyReminder: true,
+      weeklyDigest: true,
+      monthlySummary: true,
+    });
+
+    await useCase.execute('user-123');
+
+    expect(mockNotificationPreferenceRepo.createDefault).toHaveBeenCalledWith('user-123');
+  });
+
+  it('should not throw when createDefault fails (fire-and-forget)', async () => {
+    const approvedUser: User = {
+      ...baseUser,
+      accessStatus: 'whitelisted',
+      whitelistedAt: new Date(),
+    };
+    mockUserRepo.findById.mockResolvedValue(baseUser);
+    mockUserRepo.updateAccessStatus.mockResolvedValue(approvedUser);
+    mockNotificationSender.sendMessage.mockResolvedValue(undefined);
+    mockNotificationPreferenceRepo.createDefault.mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+
+    const result = await useCase.execute('user-123');
+
+    // Should still return the approved user despite preference creation failure
+    expect(result.accessStatus).toBe('whitelisted');
+    expect(mockNotificationPreferenceRepo.createDefault).toHaveBeenCalledWith('user-123');
   });
 });

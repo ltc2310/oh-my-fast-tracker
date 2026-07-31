@@ -1,0 +1,586 @@
+{
+  "pbtResults": {
+    "4.4 Write property tests for SendWeeklyDigest": {
+      "status": "passed",
+      "lastRunTimestamp": 1785474905243
+    },
+    "4.7 Write property test for error isolation (Property 1)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785474917887
+    },
+    "4.2 Write property test for SendDailyReminder (Property 2: Daily Reminder Conditional)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785474963502
+    },
+    "4.6 Write property tests for SendMonthlySummary": {
+      "status": "passed",
+      "lastRunTimestamp": 1785475180017
+    },
+    "7.3 Write property test for eligible user resolution (Property 3)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785478012981
+    },
+    "7.4 Write property test for default opt-in (Property 10)": {
+      "status": "passed",
+      "lastRunTimestamp": 1785478020567
+    }
+  },
+  "executionHistory": {
+    "1.1 Create SQL migration file for notification_preferences table": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479089
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470489739
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470608275
+      }
+    ],
+    "2.1 Create NotificationPreference entity": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479177
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470490488
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470609217
+      }
+    ],
+    "2.2 Create NotificationPreferenceRepository port": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479209
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470491234
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470609789
+      }
+    ],
+    "3.1 Create SupabaseNotificationPreferenceRepository": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479241
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470619471
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470764635
+      }
+    ],
+    "3.2 Add notification config to app.config.ts": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479302
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470620045
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470765366
+      }
+    ],
+    "3.3 Register NotificationPreferenceRepository in InfrastructureModule": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479334
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470770462
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471046781
+      }
+    ],
+    "4.1 Implement SendDailyReminder use case": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479368
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471072478
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471445931
+      }
+    ],
+    "4.3 Implement SendWeeklyDigest use case": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479402
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471073302
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471446403
+      }
+    ],
+    "4.5 Implement SendMonthlySummary use case": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479435
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471074100
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471447245
+      }
+    ],
+    "5. Checkpoint - Ensure use cases compile and tests pass": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479468
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471466815
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471518631
+      }
+    ],
+    "6.1 Implement NotificationScheduler": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479500
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471524810
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471771373
+      }
+    ],
+    "6.2 Install @nestjs/schedule and register ScheduleModule": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479534
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470771282
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471048521
+      }
+    ],
+    "6.3 Register use cases and scheduler in ApplicationModule": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479705
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471525837
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471771851
+      }
+    ],
+    "7.1 Add notification preference command handling to BotService": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479757
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471777497
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472452884
+      }
+    ],
+    "8.1 Create default notification preferences when user is approved": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479817
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472459147
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472645165
+      }
+    ],
+    "9. Checkpoint - Full integration verification": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479855
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472651819
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472705035
+      }
+    ],
+    "10.1 Update HELP_MSG in BotService with notification commands": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479884
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472712620
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472841727
+      }
+    ],
+    "10.2 Update .env.example with new environment variables": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479917
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472713486
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472842283
+      }
+    ],
+    "11.1 Update README.md": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479950
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472847866
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785473140853
+      }
+    ],
+    "12. Final checkpoint - All tests pass and documentation is complete": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470479985
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785473147035
+      },
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785473213747
+      }
+    ],
+    "1. Database schema and migration": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470608308
+      }
+    ],
+    "2. Domain layer: entity and port": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785470609821
+      }
+    ],
+    "3. Infrastructure layer: repository and config": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471046816
+      }
+    ],
+    "4. Application layer: use cases": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471447282
+      }
+    ],
+    "6. Notification scheduler service": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785471771883
+      }
+    ],
+    "7. Preference management commands in BotService": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472452926
+      }
+    ],
+    "8. Default preferences on user approval": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472645203
+      }
+    ],
+    "10. Update /help message and environment documentation": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785472842341
+      }
+    ],
+    "11. Update README.md with proactive notifications documentation": [
+      {
+        "executionId": "f3f4e6bf-606b-4de7-9478-f0bd90c1a49f",
+        "chatSessionId": "sess_4bcb9524-abf5-48c6-ae76-bdb209c4aeb0",
+        "timestamp": 1785473140887
+      }
+    ],
+    "3.4 Write unit tests for SupabaseNotificationPreferenceRepository": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279496
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473290322
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473450970
+      }
+    ],
+    "4.2 Write property test for SendDailyReminder (Property 2: Daily Reminder Conditional)": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279545
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473456511
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475200215
+      }
+    ],
+    "4.4 Write property tests for SendWeeklyDigest": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279638
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473457263
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475201062
+      }
+    ],
+    "4.6 Write property tests for SendMonthlySummary": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279683
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473458046
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475199438
+      }
+    ],
+    "4.7 Write property test for error isolation (Property 1)": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279717
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473458810
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475198409
+      }
+    ],
+    "6.4 Write unit tests for NotificationScheduler": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279754
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475206748
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475295416
+      }
+    ],
+    "7.2 Write unit tests for notification preference commands": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279797
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475301068
+      },
+      {
+        "executionId": "8fa14cd3-4525-47aa-abf7-e02683230425",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785478035666
+      }
+    ],
+    "7.3 Write property test for eligible user resolution (Property 3)": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279841
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475301784
+      },
+      {
+        "executionId": "8fa14cd3-4525-47aa-abf7-e02683230425",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785478036589
+      }
+    ],
+    "7.4 Write property test for default opt-in (Property 10)": [
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785473279888
+      },
+      {
+        "executionId": "655c361b-2a5e-4969-b69f-53819769d394",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785475302585
+      },
+      {
+        "executionId": "8fa14cd3-4525-47aa-abf7-e02683230425",
+        "chatSessionId": "sess_f19b3d0b-223e-40cf-afd6-039cfcdce880",
+        "timestamp": 1785478037405
+      }
+    ]
+  }
+}
