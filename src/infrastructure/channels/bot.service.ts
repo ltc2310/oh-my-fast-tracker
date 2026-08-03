@@ -229,6 +229,7 @@ export class BotService implements OnModuleInit {
 
   onModuleInit() {
     this.channelAdapter.onMessage(async (message) => {
+      try {
       // Debug: respond with user's chat ID
       if (/^id$/i.test(message.text.trim())) {
         await this.channelAdapter.sendText(message.userId, `Your ID: ${message.userId}`);
@@ -333,13 +334,13 @@ export class BotService implements OnModuleInit {
       // Check compare months pattern
       const compareMatch = message.text.match(COMPARE_MONTHS_REGEX);
       if (compareMatch) {
-        await this.handleCompareMonths(message.userId, message.text);
+        await this.handleCompareMonths(message.userId, internalUserId!, message.text);
         return;
       }
 
       // Undo / delete last transaction
       if (UNDO_REGEX.test(message.text.trim())) {
-        await this.handleUndo(message.userId);
+        await this.handleUndo(message.userId, internalUserId!);
         return;
       }
 
@@ -347,7 +348,7 @@ export class BotService implements OnModuleInit {
       try {
         const editResult = await this.editIntentDetector.detect(message.text.trim());
         if (editResult) {
-          await this.handleEditIntent(message.userId, editResult);
+          await this.handleEditIntent(message.userId, internalUserId!, editResult);
           return;
         }
       } catch (error) {
@@ -363,16 +364,16 @@ export class BotService implements OnModuleInit {
       const trendMatch = message.text.match(TREND_REPORT_REGEX);
       if (trendMatch) {
         const months = parseInt(trendMatch[1] || trendMatch[2], 10) || 6;
-        await this.handleTrendReportRequest(message.userId, months);
+        await this.handleTrendReportRequest(message.userId, internalUserId!, months);
         return;
       }
 
       if (REPORT_REGEX.test(message.text)) {
-        await this.handleReportRequest(message.userId, message.text);
+        await this.handleReportRequest(message.userId, internalUserId!, message.text);
         return;
       }
 
-      const transactions = await this.recordTransaction.execute(message.userId, message.text);
+      const transactions = await this.recordTransaction.execute(internalUserId!, message.text);
 
       if (transactions.length === 0) {
         await this.channelAdapter.sendText(
@@ -410,23 +411,31 @@ export class BotService implements OnModuleInit {
         message.userId,
         `Em đã ghi nhận ${transactions.length} khoản:\n${lines.join("\n")}`
       );
+      } catch (error) {
+        this.logger.error(`Unhandled error processing message from ${message.userId}`, error);
+        try {
+          await this.channelAdapter.sendText(message.userId, SERVICE_UNAVAILABLE_MSG);
+        } catch {
+          // If we can't even send the error message, just log and move on
+        }
+      }
     });
   }
 
-  private async handleReportRequest(userId: string, text: string): Promise<void> {
+  private async handleReportRequest(channelUserId: string, internalUserId: string, text: string): Promise<void> {
     const range = parseReportDateRange(text);
-    const summary = await this.generateWeeklyReport.execute(userId, range);
+    const summary = await this.generateWeeklyReport.execute(internalUserId, range);
 
     if (summary.total === 0) {
       await this.channelAdapter.sendText(
-        userId,
+        channelUserId,
         `Không có khoản chi nào từ ${formatDate(range.from)} đến ${formatDate(range.to)}.`
       );
       return;
     }
 
     const token = this.tokenService.generateReportToken({
-      userId,
+      userId: internalUserId,
       from: range.from.toISOString(),
       to: range.to.toISOString(),
     });
@@ -447,25 +456,25 @@ export class BotService implements OnModuleInit {
       `🔗 Sếp có thể xem trực quan hơn tại đây: ${url}`,
     ].join("\n");
 
-    this.logger.log(`[Report] user=${userId} → ${url}`);
-    await this.channelAdapter.sendText(userId, reply);
+    this.logger.log(`[Report] user=${internalUserId} → ${url}`);
+    await this.channelAdapter.sendText(channelUserId, reply);
   }
 
-  private async handleTrendReportRequest(userId: string, months: number): Promise<void> {
+  private async handleTrendReportRequest(channelUserId: string, internalUserId: string, months: number): Promise<void> {
     // Validate range at bot layer — send friendly message without calling use case
     if (months < 3 || months > 12) {
       await this.channelAdapter.sendText(
-        userId,
+        channelUserId,
         `Em chỉ hỗ trợ báo cáo xu hướng từ 3 đến 12 tháng. Sếp thử "báo cáo 6 tháng" nhé!`
       );
       return;
     }
 
-    const report = await this.generateTrendReport.execute(userId, { months });
+    const report = await this.generateTrendReport.execute(internalUserId, { months });
 
     // Generate token for webview/export links
     const token = this.tokenService.generateReportToken({
-      userId,
+      userId: internalUserId,
       from: report.periodStart,
       to: report.periodEnd,
     });
@@ -512,15 +521,15 @@ export class BotService implements OnModuleInit {
     lines.push(`👉 Sếp xem chi tiết giúp em tại đây: ${webviewLink}`);
 
     const reply = lines.join("\n");
-    this.logger.log(`[TrendReport] user=${userId} months=${months} → ${webviewLink}`);
-    await this.channelAdapter.sendText(userId, reply);
+    this.logger.log(`[TrendReport] user=${internalUserId} months=${months} → ${webviewLink}`);
+    await this.channelAdapter.sendText(channelUserId, reply);
   }
 
-  private async handleUndo(userId: string): Promise<void> {
-    const deleted = await this.undoLastTransaction.execute(userId);
+  private async handleUndo(channelUserId: string, internalUserId: string): Promise<void> {
+    const deleted = await this.undoLastTransaction.execute(internalUserId);
     if (!deleted) {
       await this.channelAdapter.sendText(
-        userId,
+        channelUserId,
         "Không tìm thấy khoản nào để xoá. Có thể sếp chưa ghi khoản nào hoặc đã xoá rồi."
       );
       return;
@@ -528,15 +537,15 @@ export class BotService implements OnModuleInit {
 
     const displayAmount = Math.abs(deleted.amount).toLocaleString("vi-VN");
     await this.channelAdapter.sendText(
-      userId,
+      channelUserId,
       `Đã xoá khoản ${displayAmount}đ - ${deleted.category} (${deleted.note}).`
     );
   }
 
-  private async handleEditIntent(userId: string, result: EditIntentResult): Promise<void> {
+  private async handleEditIntent(channelUserId: string, internalUserId: string, result: EditIntentResult): Promise<void> {
     // Incomplete — hỏi lại sếp
     if (result.isIncomplete) {
-      await this.channelAdapter.sendText(userId,
+      await this.channelAdapter.sendText(channelUserId,
         `Sếp muốn sửa gì ạ? Em hỗ trợ sửa:\n` +
         `• Số tiền: "sửa thành 30k"\n` +
         `• Danh mục: "sửa thành ăn uống"\n` +
@@ -547,9 +556,9 @@ export class BotService implements OnModuleInit {
     }
 
     // Tìm khoản gần nhất qua DB
-    const lastTx = await this.transactionRepository.findLastByUser(userId);
+    const lastTx = await this.transactionRepository.findLastByUser(internalUserId);
     if (!lastTx) {
-      await this.channelAdapter.sendText(userId,
+      await this.channelAdapter.sendText(channelUserId,
         "Không tìm thấy khoản nào để sửa. Sếp thử ghi khoản mới trước nhé."
       );
       return;
@@ -570,7 +579,7 @@ export class BotService implements OnModuleInit {
       const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
 
       if (!resolvedCategory) {
-        await this.channelAdapter.sendText(userId,
+        await this.channelAdapter.sendText(channelUserId,
           `Em chưa nhận ra danh mục "${result.fields.category}". Sếp chọn một trong các danh mục:\n\n` +
           `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
           `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, ` +
@@ -587,7 +596,7 @@ export class BotService implements OnModuleInit {
       // Validate: không cho phép ngày tương lai
       const now = new Date();
       if (result.fields.spentAt > now) {
-        await this.channelAdapter.sendText(userId,
+        await this.channelAdapter.sendText(channelUserId,
           "Em không thể đặt ngày trong tương lai. Sếp thử \"sửa ngày hôm qua\" hoặc \"sửa 3 ngày trước\" nhé."
         );
         return;
@@ -596,9 +605,9 @@ export class BotService implements OnModuleInit {
     }
 
     // Execute edit
-    const updated = await this.editTransaction.execute(userId, lastTx.id!, fields);
+    const updated = await this.editTransaction.execute(internalUserId, lastTx.id!, fields);
     if (!updated) {
-      await this.channelAdapter.sendText(userId,
+      await this.channelAdapter.sendText(channelUserId,
         "Không sửa được, khoản có thể đã bị xoá."
       );
       return;
@@ -608,7 +617,7 @@ export class BotService implements OnModuleInit {
     const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
     const isIncome = updated.amount < 0;
     const verb = isIncome ? "sửa thu nhập thành" : "sửa thành";
-    await this.channelAdapter.sendText(userId,
+    await this.channelAdapter.sendText(channelUserId,
       `Đã ${verb} ${displayAmount}đ - ${updated.category}` +
       (updated.note && updated.note !== updated.category ? ` (${updated.note})` : "") +
       "."
@@ -638,7 +647,7 @@ export class BotService implements OnModuleInit {
     await this.channelAdapter.sendText(channelUserId, reply);
   }
 
-  private async handleCompareMonths(userId: string, text: string): Promise<void> {
+  private async handleCompareMonths(channelUserId: string, internalUserId: string, text: string): Promise<void> {
     const match = text.match(COMPARE_MONTHS_REGEX);
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // 1-indexed
@@ -657,7 +666,7 @@ export class BotService implements OnModuleInit {
       // Validate month range
       if (monthA < 1 || monthA > 12 || monthB < 1 || monthB > 12) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           "Tháng không hợp lệ, sếp nhập tháng từ 1 đến 12 nhé!",
         );
         return;
@@ -670,7 +679,7 @@ export class BotService implements OnModuleInit {
 
       if (monthA === monthB && yearA === yearB) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           "Sếp cần chọn hai tháng khác nhau để so sánh nhé!",
         );
         return;
@@ -690,7 +699,7 @@ export class BotService implements OnModuleInit {
     }
 
     try {
-      const result = await this.compareMonths.execute(userId, {
+      const result = await this.compareMonths.execute(internalUserId, {
         monthA,
         yearA,
         monthB,
@@ -700,7 +709,7 @@ export class BotService implements OnModuleInit {
       // Check if either month has no data
       if (result.monthA.totalSpent === 0 && result.monthB.totalSpent === 0) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           `Tháng ${monthA} và tháng ${monthB} không có khoản chi nào để so sánh.`,
         );
         return;
@@ -708,7 +717,7 @@ export class BotService implements OnModuleInit {
 
       if (result.monthA.totalSpent === 0) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           `Tháng ${monthA} không có khoản chi nào để so sánh.`,
         );
         return;
@@ -716,7 +725,7 @@ export class BotService implements OnModuleInit {
 
       if (result.monthB.totalSpent === 0) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           `Tháng ${monthB} không có khoản chi nào để so sánh.`,
         );
         return;
@@ -771,7 +780,7 @@ export class BotService implements OnModuleInit {
       const rangeA = this.getMonthDateRange(yearA, monthA);
       const rangeB = this.getMonthDateRange(yearB, monthB);
       const token = this.tokenService.generateReportToken({
-        userId,
+        userId: internalUserId,
         from: rangeA.from.toISOString(),
         to: rangeB.to.toISOString(),
       });
@@ -780,25 +789,25 @@ export class BotService implements OnModuleInit {
       lines.push("");
       lines.push(`🔗 Sếp xem chi tiết giúp em tại đây: ${webviewUrl}`);
 
-      this.logger.log(`[Compare] user=${userId} monthA=${monthA}/${yearA} monthB=${monthB}/${yearB} → ${webviewUrl}`);
-      await this.channelAdapter.sendText(userId, lines.join("\n"));
+      this.logger.log(`[Compare] user=${internalUserId} monthA=${monthA}/${yearA} monthB=${monthB}/${yearB} → ${webviewUrl}`);
+      await this.channelAdapter.sendText(channelUserId, lines.join("\n"));
     } catch (error) {
       if (error instanceof SameMonthError) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           "Sếp cần chọn hai tháng khác nhau để so sánh nhé!",
         );
         return;
       }
       if (error instanceof InvalidMonthError) {
         await this.channelAdapter.sendText(
-          userId,
+          channelUserId,
           "Tháng không hợp lệ, sếp nhập tháng từ 1 đến 12 nhé!",
         );
         return;
       }
       this.logger.error("Compare months failed", error);
-      await this.channelAdapter.sendText(userId, SERVICE_UNAVAILABLE_MSG);
+      await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
     }
   }
 

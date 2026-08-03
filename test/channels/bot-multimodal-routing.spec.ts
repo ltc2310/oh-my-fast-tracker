@@ -409,7 +409,7 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       expect(mockConfirmationManager.clear).toHaveBeenCalledWith(INTERNAL_USER_ID);
       // Should fall through to normal routing (recordTransaction)
       expect(mockRecordTransaction.execute).toHaveBeenCalledWith(
-        CHANNEL_USER_ID,
+        INTERNAL_USER_ID,
         "ăn trưa 50k",
       );
     });
@@ -420,7 +420,7 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       mockConfirmationManager.get.mockReturnValue(pending);
       mockUndoLastTransaction.execute.mockResolvedValue({
         id: "tx-1",
-        userId: CHANNEL_USER_ID,
+        userId: INTERNAL_USER_ID,
         amount: 50000,
         category: "Ăn uống",
         note: "ăn trưa",
@@ -432,7 +432,7 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       // Should clear the pending confirmation
       expect(mockConfirmationManager.clear).toHaveBeenCalledWith(INTERNAL_USER_ID);
       // Should fall through to undo handler
-      expect(mockUndoLastTransaction.execute).toHaveBeenCalledWith(CHANNEL_USER_ID);
+      expect(mockUndoLastTransaction.execute).toHaveBeenCalledWith(INTERNAL_USER_ID);
     });
   });
 });

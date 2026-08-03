@@ -86,7 +86,7 @@ describe("BotService - Trend Report Routing", () => {
     } as unknown as jest.Mocked<GenerateTrendReport>;
 
     mockCheckUserAccess = {
-      execute: jest.fn().mockResolvedValue({ allowed: true, isFirstMessage: false, user: {} }),
+      execute: jest.fn().mockResolvedValue({ allowed: true, isFirstMessage: false, user: { id: "user-1" } }),
     } as unknown as jest.Mocked<CheckUserAccess>;
 
     botService = new BotService(

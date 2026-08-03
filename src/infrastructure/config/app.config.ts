@@ -22,7 +22,7 @@ export const authConfig = registerAs("auth", () => ({
 export const aiConfig = registerAs("ai", () => ({
   geminiApiKey: requireEnv("GEMINI_API_KEY"),
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite",
-  geminiMultimodalModel: process.env.GEMINI_MULTIMODAL_MODEL ?? "gemini-2.0-flash",
+  geminiMultimodalModel: process.env.GEMINI_MULTIMODAL_MODEL ?? "gemini-3.5-flash-lite",
 }));
 
 export const adminConfig = registerAs("admin", () => ({
