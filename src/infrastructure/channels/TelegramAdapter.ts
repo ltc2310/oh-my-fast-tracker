@@ -37,6 +37,22 @@ export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
       try {
         // Voice message handling
         if (msg.voice) {
+          // Pre-download validation: check duration and file_size from metadata
+          if (msg.voice.duration > 60) {
+            await this.messageHandler({
+              userId, channel: "telegram", text: "", username,
+              voice: { data: Buffer.alloc(0), fileId: msg.voice.file_id, mimeType: msg.voice.mime_type ?? "audio/ogg", duration: msg.voice.duration },
+            });
+            return;
+          }
+          if (msg.voice.file_size && msg.voice.file_size > 20 * 1024 * 1024) {
+            this.logger.warn(`[Voice] File too large (${msg.voice.file_size} bytes) for user ${userId}, skipping download`);
+            await this.messageHandler({
+              userId, channel: "telegram", text: "", username,
+              voice: { data: Buffer.alloc(0), fileId: msg.voice.file_id, mimeType: msg.voice.mime_type ?? "audio/ogg", duration: msg.voice.duration },
+            });
+            return;
+          }
           const voice = await this.downloadVoice(msg.voice);
           await this.messageHandler({
             userId,
@@ -50,6 +66,16 @@ export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
 
         // Photo message handling (select highest resolution — last element)
         if (msg.photo && msg.photo.length > 0) {
+          const highRes = msg.photo[msg.photo.length - 1];
+          // Pre-download validation: check file_size from metadata
+          if (highRes.file_size && highRes.file_size > 10 * 1024 * 1024) {
+            this.logger.warn(`[Photo] File too large (${highRes.file_size} bytes) for user ${userId}, skipping download`);
+            await this.messageHandler({
+              userId, channel: "telegram", text: msg.caption ?? "", username,
+              photo: { data: Buffer.alloc(0), fileId: highRes.file_id, mimeType: "image/jpeg", fileSize: highRes.file_size },
+            });
+            return;
+          }
           const photo = await this.downloadPhoto(msg.photo);
           await this.messageHandler({
             userId,

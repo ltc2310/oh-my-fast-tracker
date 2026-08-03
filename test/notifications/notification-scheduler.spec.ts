@@ -50,6 +50,16 @@ describe('NotificationScheduler', () => {
   });
 
   describe('handleMonthlySummary', () => {
+    beforeEach(() => {
+      // Fake date to last day of January 2025 so isLastDayOfMonth() returns true
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(2025, 0, 31, 20, 0, 0));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
     it('calls sendMonthlySummary.execute()', async () => {
       await scheduler.handleMonthlySummary();
 

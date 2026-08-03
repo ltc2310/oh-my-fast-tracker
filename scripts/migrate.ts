@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import { Client } from "pg";
 
@@ -12,8 +12,17 @@ async function migrate(): Promise<void> {
     );
   }
 
-  const schemaPath = path.join(__dirname, "..", "sql", "schema.sql");
-  const sql = readFileSync(schemaPath, "utf-8");
+  const sqlDir = path.join(__dirname, "..", "sql");
+
+  // Get all .sql files sorted by name (numeric prefix ensures correct order)
+  const sqlFiles = readdirSync(sqlDir)
+    .filter((f) => f.endsWith(".sql") && !f.startsWith("seed"))
+    .sort();
+
+  if (sqlFiles.length === 0) {
+    console.log("No SQL files found in sql/ directory.");
+    return;
+  }
 
   const client = new Client({
     connectionString,
@@ -21,11 +30,16 @@ async function migrate(): Promise<void> {
   });
 
   await client.connect();
-  console.log("Applying sql/schema.sql ...");
 
   try {
-    await client.query(sql);
-    console.log("Schema applied successfully.");
+    for (const file of sqlFiles) {
+      const filePath = path.join(sqlDir, file);
+      const sql = readFileSync(filePath, "utf-8");
+      console.log(`Applying ${file} ...`);
+      await client.query(sql);
+      console.log(`  ✓ ${file} applied.`);
+    }
+    console.log("\nAll migrations applied successfully.");
   } finally {
     await client.end();
   }

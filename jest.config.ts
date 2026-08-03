@@ -6,6 +6,7 @@ const config: Config = {
   rootDir: ".",
   testMatch: ["<rootDir>/test/**/*.spec.ts"],
   moduleFileExtensions: ["ts", "js", "json"],
+  forceExit: true,
   globals: {
     "ts-jest": {
       tsconfig: {
