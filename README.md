@@ -20,6 +20,8 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 - **Income tracking** — "lương 20tr", "thưởng 5tr" stored as negative amounts to separate income from expenses in reports
 - **Undo / Edit / Delete** — "xoá" removes last transaction, "sửa thành 30k" edits amount, "sửa thành ăn uống" changes category, "sửa ngày hôm qua" changes date, or combine: "sửa thành cà phê 25k hôm qua"
 - **Proactive notifications** — Automated scheduled messages via `@nestjs/schedule`: conditional daily reminder (only if no transaction logged today), weekly digest (Sunday summary with top categories and week-over-week comparison), monthly summary (category breakdown and budget status). Each notification type is independently opt-in/opt-out per user.
+- **Voice message input** — Send a voice message describing your expense in Vietnamese → Gemini 2.0 Flash multimodal transcribes and extracts amount, category, note → confirmation flow before saving
+- **Bank transfer screenshot** — Send a screenshot of a bank transfer → Gemini 2.0 Flash multimodal OCR extracts amount, recipient, bank → confirmation flow before saving
 
 ## Architecture
 
@@ -81,6 +83,9 @@ User message → TelegramAdapter → BotService
   │     ├─ Pending/Blocked? → Send "waiting for approval" message
   │     └─ Whitelisted?  → Continue ↓
   ├─ /help command?  → Send command reference
+  ├─ Voice message?  → GeminiMultimodalParser.parseVoice → ConfirmationManager → confirm
+  ├─ Photo message?  → GeminiMultimodalParser.parseImage → ConfirmationManager → confirm
+  ├─ Pending confirm? → handleConfirmation (ok/đổi/bỏ)
   ├─ Notification prefs? → bật/tắt nhắc nhở, báo cáo tuần/tháng, xem thông báo
   ├─ Undo/Delete?    → UndoLastTransaction → confirm deletion
   ├─ Edit?           → EditIntentDetector → EditTransaction → confirm update
@@ -129,6 +134,7 @@ npm run start:dev      # development with hot-reload
 | `PORT` | API server port (default: 3000) |
 | `GEMINI_API_KEY` | Google Gemini API key |
 | `GEMINI_MODEL` | Gemini model (default: gemini-2.0-flash-lite) |
+| `GEMINI_MULTIMODAL_MODEL` | Gemini model for voice/image parsing (default: gemini-2.0-flash) |
 | `ADMIN_API_SECRET` | Secret for Admin API authentication (X-Admin-Secret header) |
 | `DAILY_REMINDER_CRON` | Cron for daily reminder (default: `0 20 * * *` — 8 PM daily) |
 | `WEEKLY_DIGEST_CRON` | Cron for weekly digest (default: `0 20 * * 0` — 8 PM Sunday) |
@@ -231,6 +237,12 @@ npm run migrate   # applies all SQL files in order
 | `bật báo cáo tháng` | Enable monthly summary notification |
 | `tắt báo cáo tháng` | Disable monthly summary notification |
 | `xem thông báo` | View current notification preferences |
+| 🎤 Gửi voice message | Record expense via voice (Vietnamese) |
+| 📸 Gửi ảnh chuyển khoản | Record expense from bank transfer screenshot |
+| `ok` / `lưu` | Confirm and save pending voice/photo transaction |
+| `đổi danh mục [tên]` | Change category of pending transaction |
+| `đổi số tiền [số]` | Change amount of pending transaction |
+| `bỏ` | Cancel pending voice/photo transaction |
 
 ## API Endpoints
 
@@ -417,9 +429,9 @@ npm run test:watch    # watch mode
 - [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
 - [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec complete, implementation pending)*
 - [x] **Proactive notifications** — Daily reminder (conditional), weekly digest, monthly summary via @nestjs/schedule. Per-user opt-in/opt-out with Vietnamese chat commands. *(completed)*
-- [ ] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
-- [ ] **Forward bank notifications** — Forward SMS/app notification messages from banks/MoMo to auto-record transactions
-- [ ] **Voice message support** — Telegram voice → Gemini transcription → HybridParser
+- [x] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
+- [x] **Voice message support** — Telegram voice → Gemini 2.0 Flash multimodal transcription + expense extraction → confirmation flow *(completed)*
+- [x] **Bank transfer screenshot** — Gửi ảnh chuyển khoản ngân hàng để bot tự nhận dạng số tiền, người nhận, ngân hàng via Gemini 2.0 Flash multimodal + confirmation flow *(completed)*
 - [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
 - [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
 - [ ] **Production deployment** — Render/Railway with webhook mode for Telegram

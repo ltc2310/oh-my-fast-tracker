@@ -11,6 +11,8 @@ import { EditTransaction } from "../../src/application/usecases/EditTransaction"
 import { EditIntentDetector } from "../../src/domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
+import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { TrendReport } from "../../src/domain/entities/TrendReport";
 import { ConfigType } from "@nestjs/config";
 import { appConfig } from "../../src/infrastructure/config/app.config";
@@ -94,6 +96,7 @@ describe("BotService - Trend Report Routing", () => {
       { detect: jest.fn().mockResolvedValue(null) } as unknown as EditIntentDetector,
       { findLastByUser: jest.fn().mockResolvedValue(null) } as unknown as TransactionRepository,
       { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
+      { parseVoice: jest.fn().mockResolvedValue([]), parseImage: jest.fn().mockResolvedValue([]) } as unknown as MultimodalParser,
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
@@ -101,6 +104,7 @@ describe("BotService - Trend Report Routing", () => {
       mockCheckUserAccess,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as UndoLastTransaction,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
+      { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
     );
 
     botService.onModuleInit();

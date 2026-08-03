@@ -357,7 +357,7 @@ export function detectCategory(text: string): string | null {
  * 2. Slang unit (5 xị, 2 chai, 1 tỏi)
  * 3. Bare number >= 1000 (50000)
  */
-function extractAmount(text: string): number | null {
+export function extractAmount(text: string): number | null {
   // 1. Standard units
   const stdMatch = text.match(AMOUNT_REGEX);
   if (stdMatch) {

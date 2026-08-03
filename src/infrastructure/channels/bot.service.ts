@@ -1,6 +1,8 @@
 import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { ChannelAdapter } from "../../domain/ports/ChannelAdapter";
+import { MultimodalParser } from "../../domain/ports/MultimodalParser";
+import { ParsedExpense } from "../../domain/ports/Parser";
 import { RecordTransaction } from "../../application/usecases/RecordTransaction";
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
@@ -8,12 +10,15 @@ import { CompareMonths, SameMonthError, InvalidMonthError } from "../../applicat
 import { CheckUserAccess } from "../../application/usecases/CheckUserAccess";
 import { UndoLastTransaction } from "../../application/usecases/UndoLastTransaction";
 import { EditTransaction } from "../../application/usecases/EditTransaction";
+import { ConfirmationManager } from "../../application/services/ConfirmationManager";
 import { TokenService } from "../../domain/ports/TokenService";
 import { EditIntentDetector, EditIntentResult } from "../../domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../domain/ports/NotificationPreferenceRepository";
 import { appConfig } from "../config/app.config";
-import { detectCategory, expandAbbreviations, normalizeSpelling } from "../parsers/RegexParser";
+import { detectCategory, expandAbbreviations, normalizeSpelling, extractAmount } from "../parsers/RegexParser";
+import { isIncomeCategory } from "../../domain/constants/income-categories";
+import { Transaction } from "../../domain/entities/Transaction";
 
 /** Access control messages (Vietnamese) */
 const WELCOME_MSG =
@@ -22,6 +27,22 @@ const PENDING_MSG =
   "Tài khoản của bạn vẫn đang chờ duyệt, mình sẽ thông báo khi có thể sử dụng nhé 🙏";
 const SERVICE_UNAVAILABLE_MSG =
   "Hệ thống đang gặp sự cố tạm thời, sếp thử lại sau nhé 🙏";
+
+/** Voice/Photo error messages */
+const VOICE_EMPTY_MSG =
+  "Em không nghe rõ khoản chi tiêu trong tin nhắn thoại. Sếp thử ghi âm lại rõ hơn nhé 🎤";
+const PHOTO_EMPTY_MSG =
+  "Em không nhận ra đây là ảnh chuyển khoản. Sếp gửi ảnh màn hình giao dịch từ app ngân hàng nhé 📸";
+const VOICE_TOO_LONG_MSG =
+  "Tin nhắn thoại hơi dài, sếp ghi âm ngắn gọn hơn (dưới 1 phút) nhé 🎤";
+const PHOTO_TOO_LARGE_MSG =
+  "Ảnh quá lớn, sếp gửi ảnh chụp màn hình bình thường (dưới 10MB) nhé 📸";
+const INVALID_JSON_MSG =
+  "Em xử lý chưa được, sếp thử gửi lại hoặc gõ text như bình thường nhé 🙏";
+
+/** Max voice duration (seconds) and max photo size (bytes) */
+const MAX_VOICE_DURATION_SECONDS = 60;
+const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 /** /start — shown when user opens bot for the first time */
 const START_MSG = `Chào sếp! Em là bot quản lý chi tiêu cá nhân 💰
@@ -44,6 +65,14 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • ăn sáng 70k, rửa xe 30k (nhiều khoản)
 • cf 30k (viết tắt: cà phê)
 • lương 20tr (thu nhập)
+
+🎤 Voice & Ảnh:
+• Gửi tin nhắn thoại mô tả chi tiêu
+• Gửi ảnh chuyển khoản ngân hàng
+• "ok" — xác nhận lưu
+• "đổi danh mục [tên]" — đổi danh mục
+• "đổi số tiền [số]" — đổi số tiền
+• "bỏ" — huỷ không lưu
 
 📊 Xem báo cáo:
 • báo cáo (7 ngày gần nhất)
@@ -92,6 +121,12 @@ const NOTIFICATION_DISABLE_WEEKLY = /^tắt\s*báo\s*cáo\s*tuần$/i;
 const NOTIFICATION_ENABLE_MONTHLY = /^bật\s*báo\s*cáo\s*tháng$/i;
 const NOTIFICATION_DISABLE_MONTHLY = /^tắt\s*báo\s*cáo\s*tháng$/i;
 const NOTIFICATION_STATUS = /^(xem\s*thông\s*báo|cài\s*đặt\s*thông\s*báo)$/i;
+
+/** Confirmation flow command patterns */
+const CONFIRM_REGEX = /^(ok|lưu)$/i;
+const CHANGE_CATEGORY_REGEX = /^đổi\s*danh\s*mục\s+(.+)$/i;
+const CHANGE_AMOUNT_REGEX = /^đổi\s*số\s*tiền\s+(.+)$/i;
+const CANCEL_REGEX = /^(bỏ|hủy)$/i;
 
 /**
  * Parse a report request message to determine the date range.
@@ -181,6 +216,7 @@ export class BotService implements OnModuleInit {
     @Inject("EditIntentDetector") private readonly editIntentDetector: EditIntentDetector,
     @Inject("TransactionRepository") private readonly transactionRepository: TransactionRepository,
     @Inject("NotificationPreferenceRepository") private readonly notificationPreferenceRepository: NotificationPreferenceRepository,
+    @Inject("MultimodalParser") private readonly multimodalParser: MultimodalParser,
     private readonly recordTransaction: RecordTransaction,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
@@ -188,6 +224,7 @@ export class BotService implements OnModuleInit {
     private readonly checkUserAccess: CheckUserAccess,
     private readonly undoLastTransaction: UndoLastTransaction,
     private readonly editTransaction: EditTransaction,
+    private readonly confirmationManager: ConfirmationManager,
   ) { }
 
   onModuleInit() {
@@ -235,8 +272,27 @@ export class BotService implements OnModuleInit {
         return;
       }
 
-      // Notification preference commands
+      // Voice message routing
+      if (message.voice) {
+        await this.handleVoiceMessage(message.userId, internalUserId!, message.voice);
+        return;
+      }
+
+      // Photo message routing
+      if (message.photo) {
+        await this.handlePhotoMessage(message.userId, internalUserId!, message.photo);
+        return;
+      }
+
+      // Confirmation flow check — after voice/photo, before normal text routing
       const trimmedText = message.text.trim();
+      if (internalUserId && this.confirmationManager.has(internalUserId)) {
+        const handled = await this.handleConfirmation(internalUserId, message.userId, trimmedText);
+        if (handled) return;
+        // If not handled, fall through to normal routing (pending already cleared)
+      }
+
+      // Notification preference commands
       if (internalUserId) {
         if (NOTIFICATION_ENABLE_DAILY.test(trimmedText)) {
           await this.notificationPreferenceRepository.upsert(internalUserId, { dailyReminder: true });
@@ -744,6 +800,264 @@ export class BotService implements OnModuleInit {
       this.logger.error("Compare months failed", error);
       await this.channelAdapter.sendText(userId, SERVICE_UNAVAILABLE_MSG);
     }
+  }
+
+  private async handleVoiceMessage(
+    channelUserId: string,
+    internalUserId: string,
+    voice: { data: Buffer; fileId: string; mimeType: string; duration: number },
+  ): Promise<void> {
+    // Check for download failure (empty buffer)
+    if (voice.data.length === 0) {
+      this.logger.error(`[Voice] Download failed for user=${internalUserId}`);
+      await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
+      return;
+    }
+
+    // Validate duration
+    if (voice.duration > MAX_VOICE_DURATION_SECONDS) {
+      await this.channelAdapter.sendText(channelUserId, VOICE_TOO_LONG_MSG);
+      return;
+    }
+
+    try {
+      const expenses = await this.multimodalParser.parseVoice(voice.data, voice.mimeType);
+
+      if (expenses.length === 0) {
+        await this.channelAdapter.sendText(channelUserId, VOICE_EMPTY_MSG);
+        return;
+      }
+
+      this.confirmationManager.set(internalUserId, channelUserId, expenses, "voice");
+      const confirmMsg = this.formatConfirmationMessage(expenses, "voice");
+      await this.channelAdapter.sendText(channelUserId, confirmMsg);
+    } catch (error: any) {
+      this.logger.error(`[Voice] Parse failed for user=${internalUserId}`, error?.message);
+      if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
+        await this.channelAdapter.sendText(channelUserId, INVALID_JSON_MSG);
+      } else {
+        await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
+      }
+    }
+  }
+
+  private async handlePhotoMessage(
+    channelUserId: string,
+    internalUserId: string,
+    photo: { data: Buffer; fileId: string; mimeType: string; fileSize: number },
+  ): Promise<void> {
+    // Check for download failure (empty buffer)
+    if (photo.data.length === 0) {
+      this.logger.error(`[Photo] Download failed for user=${internalUserId}`);
+      await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
+      return;
+    }
+
+    // Validate file size
+    if (photo.fileSize > MAX_PHOTO_SIZE_BYTES) {
+      await this.channelAdapter.sendText(channelUserId, PHOTO_TOO_LARGE_MSG);
+      return;
+    }
+
+    try {
+      const expenses = await this.multimodalParser.parseImage(photo.data, photo.mimeType);
+
+      if (expenses.length === 0) {
+        await this.channelAdapter.sendText(channelUserId, PHOTO_EMPTY_MSG);
+        return;
+      }
+
+      this.confirmationManager.set(internalUserId, channelUserId, expenses, "photo");
+      const confirmMsg = this.formatConfirmationMessage(expenses, "photo");
+      await this.channelAdapter.sendText(channelUserId, confirmMsg);
+    } catch (error: any) {
+      this.logger.error(`[Photo] Parse failed for user=${internalUserId}`, error?.message);
+      if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
+        await this.channelAdapter.sendText(channelUserId, INVALID_JSON_MSG);
+      } else {
+        await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
+      }
+    }
+  }
+
+  /**
+   * Handle confirmation flow when user has a pending confirmation.
+   * Returns true if the message was handled (stop further routing), false to continue normal routing.
+   */
+  private async handleConfirmation(
+    internalUserId: string,
+    channelUserId: string,
+    text: string,
+  ): Promise<boolean> {
+    const pending = this.confirmationManager.get(internalUserId);
+    if (!pending) return false;
+
+    // "ok" or "lưu" — save all pending expenses
+    if (CONFIRM_REGEX.test(text)) {
+      for (const expense of pending.expenses) {
+        const amount = isIncomeCategory(expense.category)
+          ? -Math.abs(expense.amount)
+          : Math.abs(expense.amount);
+
+        const transaction: Transaction = {
+          userId: internalUserId,
+          amount,
+          category: expense.category,
+          note: expense.note,
+          spentAt: expense.date ?? new Date(),
+        };
+        await this.transactionRepository.save(transaction);
+      }
+
+      this.confirmationManager.clear(internalUserId);
+
+      if (pending.expenses.length === 1) {
+        const expense = pending.expenses[0];
+        const displayAmount = Math.abs(expense.amount).toLocaleString("vi-VN");
+        const verb = isIncomeCategory(expense.category) ? "ghi nhận thu" : "ghi nhận";
+        await this.channelAdapter.sendText(channelUserId, `Em đã ${verb} ${displayAmount}đ - ${expense.category}`);
+      } else {
+        const lines = pending.expenses.map((e) => {
+          const displayAmount = Math.abs(e.amount).toLocaleString("vi-VN");
+          const sign = isIncomeCategory(e.category) ? "+" : "";
+          return `• ${sign}${displayAmount}đ - ${e.category}`;
+        });
+        await this.channelAdapter.sendText(
+          channelUserId,
+          `Em đã ghi nhận ${pending.expenses.length} khoản:\n${lines.join("\n")}`,
+        );
+      }
+      return true;
+    }
+
+    // "đổi danh mục [X]" — change category of the first expense
+    const categoryMatch = text.match(CHANGE_CATEGORY_REGEX);
+    if (categoryMatch) {
+      const rawCategory = categoryMatch[1].trim();
+      const lowered = rawCategory.toLowerCase();
+      const expanded = expandAbbreviations(lowered);
+      const normalized = normalizeSpelling(expanded);
+      const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+
+      if (!resolvedCategory) {
+        await this.channelAdapter.sendText(
+          channelUserId,
+          `Em chưa nhận ra danh mục "${rawCategory}". Sếp chọn một trong các danh mục:\n\n` +
+            `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
+            `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, ` +
+            `Tiết kiệm & Đầu tư, Thu nhập, Khác`,
+        );
+        // Keep pending active — user can retry
+        return true;
+      }
+
+      // Update expense and save
+      const expense = pending.expenses[0];
+      expense.category = resolvedCategory;
+
+      const amount = isIncomeCategory(expense.category)
+        ? -Math.abs(expense.amount)
+        : Math.abs(expense.amount);
+
+      const transaction: Transaction = {
+        userId: internalUserId,
+        amount,
+        category: expense.category,
+        note: expense.note,
+        spentAt: expense.date ?? new Date(),
+      };
+      await this.transactionRepository.save(transaction);
+      this.confirmationManager.clear(internalUserId);
+
+      const displayAmount = Math.abs(expense.amount).toLocaleString("vi-VN");
+      const verb = isIncomeCategory(expense.category) ? "ghi nhận thu" : "ghi nhận";
+      await this.channelAdapter.sendText(channelUserId, `Em đã ${verb} ${displayAmount}đ - ${expense.category}`);
+      return true;
+    }
+
+    // "đổi số tiền [X]" — change amount of the first expense
+    const amountMatch = text.match(CHANGE_AMOUNT_REGEX);
+    if (amountMatch) {
+      const rawAmount = amountMatch[1].trim();
+      const parsedAmount = extractAmount(rawAmount);
+
+      if (!parsedAmount) {
+        await this.channelAdapter.sendText(
+          channelUserId,
+          "Em chưa nhận ra số tiền. Sếp thử gõ dạng: đổi số tiền 50k",
+        );
+        // Keep pending active — user can retry
+        return true;
+      }
+
+      // Update expense and save
+      const expense = pending.expenses[0];
+      expense.amount = parsedAmount;
+
+      const amount = isIncomeCategory(expense.category)
+        ? -Math.abs(expense.amount)
+        : Math.abs(expense.amount);
+
+      const transaction: Transaction = {
+        userId: internalUserId,
+        amount,
+        category: expense.category,
+        note: expense.note,
+        spentAt: expense.date ?? new Date(),
+      };
+      await this.transactionRepository.save(transaction);
+      this.confirmationManager.clear(internalUserId);
+
+      const displayAmount = Math.abs(expense.amount).toLocaleString("vi-VN");
+      const verb = isIncomeCategory(expense.category) ? "ghi nhận thu" : "ghi nhận";
+      await this.channelAdapter.sendText(channelUserId, `Em đã ${verb} ${displayAmount}đ - ${expense.category}`);
+      return true;
+    }
+
+    // "bỏ" or "hủy" — cancel
+    if (CANCEL_REGEX.test(text)) {
+      this.confirmationManager.clear(internalUserId);
+      await this.channelAdapter.sendText(channelUserId, "Đã huỷ, em không lưu khoản này.");
+      return true;
+    }
+
+    // No match — clear pending silently and let message continue to normal routing
+    this.confirmationManager.clear(internalUserId);
+    return false;
+  }
+
+  private formatConfirmationMessage(expenses: ParsedExpense[], source: "voice" | "photo"): string {
+    const icon = source === "voice" ? "🎤" : "📸";
+
+    if (expenses.length === 1) {
+      const expense = expenses[0];
+      const formattedAmount = expense.amount.toLocaleString("vi-VN");
+      return [
+        `${icon} Em nhận được:`,
+        `💰 Số tiền: ${formattedAmount}đ`,
+        `📁 Danh mục: ${expense.category}`,
+        `📝 Ghi chú: ${expense.note}`,
+        "",
+        `• "ok" — lưu`,
+        `• "đổi danh mục [tên]" — đổi danh mục`,
+        `• "đổi số tiền [số]" — đổi số tiền`,
+        `• "bỏ" — huỷ`,
+      ].join("\n");
+    }
+
+    // Multiple expenses
+    const expenseLines = expenses.map((expense, index) => {
+      const formattedAmount = expense.amount.toLocaleString("vi-VN");
+      return `${index + 1}. 💰 ${formattedAmount}đ - ${expense.category} (${expense.note})`;
+    });
+
+    return [
+      `${icon} Em nhận được ${expenses.length} khoản:`,
+      ...expenseLines,
+      "",
+      `• "ok" — lưu tất cả`,
+      `• "bỏ" — huỷ`,
+    ].join("\n");
   }
 
   private getMonthDateRange(year: number, month: number): { from: Date; to: Date } {

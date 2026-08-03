@@ -12,6 +12,8 @@ import { EditTransaction } from "../../src/application/usecases/EditTransaction"
 import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { Transaction } from "../../src/domain/entities/Transaction";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
+import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
 import { appConfig } from "../../src/infrastructure/config/app.config";
 
@@ -99,6 +101,7 @@ describe("BotService - Edit Intent Flow", () => {
       mockEditIntentDetector,
       mockTransactionRepository as unknown as TransactionRepository,
       { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
+      { parseVoice: jest.fn().mockResolvedValue([]), parseImage: jest.fn().mockResolvedValue([]) } as unknown as MultimodalParser,
       mockRecordTransaction,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
@@ -106,6 +109,7 @@ describe("BotService - Edit Intent Flow", () => {
       mockCheckUserAccess,
       mockUndoLastTransaction,
       mockEditTransaction,
+      { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
     );
 
     botService.onModuleInit();

@@ -13,6 +13,7 @@ import { SupabaseNotificationPreferenceRepository } from "./repositories/Supabas
 import { JwtTokenService } from "./auth/JwtTokenService";
 import { TelegramAdapter } from "./channels/TelegramAdapter";
 import { TelegramNotificationSender } from "./channels/TelegramNotificationSender";
+import { GeminiMultimodalParser } from "./parsers/GeminiMultimodalParser";
 
 @Global()
 @Module({
@@ -37,6 +38,8 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     RegexEditMatcher,
     AIEditDetector,
     { provide: "EditIntentDetector", useClass: HybridEditDetector },
+    GeminiMultimodalParser,
+    { provide: "MultimodalParser", useClass: GeminiMultimodalParser },
   ],
   exports: [
     "Parser",
@@ -47,6 +50,7 @@ import { TelegramNotificationSender } from "./channels/TelegramNotificationSende
     "ChannelAdapter",
     "NotificationSender",
     "EditIntentDetector",
+    "MultimodalParser",
   ],
 })
 export class InfrastructureModule {}

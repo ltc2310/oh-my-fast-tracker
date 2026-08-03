@@ -12,6 +12,8 @@ import { UndoLastTransaction } from "../../src/application/usecases/UndoLastTran
 import { EditTransaction } from "../../src/application/usecases/EditTransaction";
 import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { NotificationPreference } from "../../src/domain/entities/NotificationPreference";
+import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
 import { appConfig } from "../../src/infrastructure/config/app.config";
 
@@ -64,6 +66,7 @@ describe("BotService - Notification Preference Commands", () => {
       { detect: jest.fn().mockResolvedValue(null) } as unknown as EditIntentDetector,
       { findLastByUser: jest.fn().mockResolvedValue(null) } as unknown as TransactionRepository,
       mockNotificationPreferenceRepository,
+      { parseVoice: jest.fn().mockResolvedValue([]), parseImage: jest.fn().mockResolvedValue([]) } as unknown as MultimodalParser,
       { execute: jest.fn().mockResolvedValue([]) } as unknown as RecordTransaction,
       { execute: jest.fn().mockResolvedValue({ total: 0, byCategory: [] }) } as unknown as GenerateWeeklyReport,
       { execute: jest.fn().mockResolvedValue({}) } as unknown as GenerateTrendReport,
@@ -71,6 +74,7 @@ describe("BotService - Notification Preference Commands", () => {
       mockCheckUserAccess,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as UndoLastTransaction,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
+      { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
     );
 
     botService.onModuleInit();

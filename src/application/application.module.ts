@@ -18,6 +18,7 @@ import { SendDailyReminder } from "./usecases/SendDailyReminder";
 import { SendWeeklyDigest } from "./usecases/SendWeeklyDigest";
 import { SendMonthlySummary } from "./usecases/SendMonthlySummary";
 import { NotificationScheduler } from "./services/NotificationScheduler";
+import { ConfirmationManager } from "./services/ConfirmationManager";
 
 /**
  * Application module only declares use cases as providers.
@@ -46,6 +47,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     SendWeeklyDigest,
     SendMonthlySummary,
     NotificationScheduler,
+    ConfirmationManager,
   ],
   exports: [
     RecordTransaction,
@@ -67,6 +69,7 @@ import { NotificationScheduler } from "./services/NotificationScheduler";
     SendWeeklyDigest,
     SendMonthlySummary,
     NotificationScheduler,
+    ConfirmationManager,
   ],
 })
 export class ApplicationModule {}
