@@ -1,8 +1,24 @@
+export interface PhotoAttachment {
+  data: Buffer;
+  fileId: string;
+  mimeType: string;
+  fileSize: number;
+}
+
+export interface VoiceAttachment {
+  data: Buffer;
+  fileId: string;
+  mimeType: string;
+  duration: number;
+}
+
 export interface IncomingMessage {
   userId: string;
   channel: string;
   text: string;
   username?: string;
+  photo?: PhotoAttachment;
+  voice?: VoiceAttachment;
 }
 
 /**
