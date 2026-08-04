@@ -24,6 +24,7 @@ import { SendWeeklyDigest } from "./usecases/SendWeeklyDigest";
 import { SendMonthlySummary } from "./usecases/SendMonthlySummary";
 import { NotificationScheduler } from "./services/NotificationScheduler";
 import { ConfirmationManager } from "./services/ConfirmationManager";
+import { PendingEditManager } from "./services/PendingEditManager";
 
 /**
  * Application module only declares use cases as providers.
@@ -54,6 +55,7 @@ import { ConfirmationManager } from "./services/ConfirmationManager";
     SendMonthlySummary,
     NotificationScheduler,
     ConfirmationManager,
+    PendingEditManager,
     SetBudgetLimit,
     GetBudgetStatus,
     CheckBudgetAfterRecord,
@@ -85,6 +87,7 @@ import { ConfirmationManager } from "./services/ConfirmationManager";
     SendMonthlySummary,
     NotificationScheduler,
     ConfirmationManager,
+    PendingEditManager,
   ],
 })
 export class ApplicationModule {}

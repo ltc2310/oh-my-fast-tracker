@@ -61,6 +61,8 @@ src/
       NotificationScheduler.ts       cron-based notification scheduling
       filename-formatter.ts          format export filenames
       vnd-formatter.ts               format VND currency strings
+      ConfirmationManager.ts         pending voice/photo confirmations (in-memory, 5 min TTL)
+      PendingEditManager.ts          tracks which transaction an inline edit targets
 
   infrastructure/   ← Concrete implementations
     auth/             JwtTokenService
@@ -76,6 +78,29 @@ src/
   app.module.ts     ← Root NestJS module
   main.ts           ← Bootstrap
 ```
+
+### ⚠️ The two-ID rule (read before touching BotService)
+
+There are two different user identifiers in this codebase. Mixing them up silently
+splits a user's data in half and disables every ownership check:
+
+| ID | Value | Used for |
+|----|-------|----------|
+| `channelUserId` | Telegram chat ID, e.g. `"7046661244"` | **Only** sending messages back to the user (`channelAdapter.sendText`, `answerCallbackQuery`) |
+| `internalUserId` | `users.id` UUID | **Everything else** — all use cases, all repositories, report token payloads |
+
+Rules:
+
+1. Every private handler in `BotService` takes **both**, named `channelUserId` and `internalUserId`.
+2. Never pass `channelUserId` to a use case or repository.
+3. Inline keyboard callbacks only carry `channelUserId`. Resolve the internal ID via
+   `resolveInternalUserId(channel, channelUserId)` before touching persisted data.
+4. Never call `transactionRepository.deleteById()` from `BotService` — use the
+   `DeleteTransaction` use case, which verifies ownership.
+
+This is enforced by `test/channels/bot-userid-contract.spec.ts`, which drives every
+command path with deliberately different values for the two IDs and asserts each one
+lands in the right place. If you add a command, add it there too.
 
 ## How it works
 
@@ -260,15 +285,19 @@ npm run migrate   # applies all SQL files in order
 | `đổi số tiền [số]` | Change amount of pending transaction |
 | `bỏ` | Cancel pending voice/photo transaction |
 | `hôm nay chi gì` | List today's expenses with time |
+| `chi tiêu hôm nay` | Same as above (alternate phrasing) |
 | `hôm qua chi gì` | List yesterday's expenses |
+| `chi tiêu hôm qua` | Same as above (alternate phrasing) |
 | `5 khoản gần nhất` | List N most recent transactions |
 | `lịch sử 3` | List 3 most recent transactions |
 | `xem 7 khoản` | List 7 most recent transactions |
-| [✏️ Sửa] button | After recording — tap to edit amount/category/date |
+| [✏️ Sửa] button | After recording — tap to edit amount/category/date of **that** transaction |
 | [🗑 Xoá] button | After recording — tap to delete immediately |
+| `xoá khoản vừa rồi` | Delete last transaction (also: `xoá khoản cuối`, `xoá khoản gần nhất`) |
 | `xoá khoản cà phê` | Find and delete a transaction by keyword |
 | `xoá khoản grab hôm qua` | Delete specific transaction with keyword + date |
 | `định mức ăn uống 5tr` | Set monthly budget limit for a category |
+| `định mức mua sắm 2000000` | Same, with a full number instead of a unit |
 | `xem định mức` | View all budget limits with % usage |
 | `xoá định mức ăn uống` | Remove budget limit for a category |
 | `/pending` | (Admin) List pending users |
@@ -447,9 +476,19 @@ Users who are `pending` or `blocked` receive a polite message and cannot use the
 ## Testing
 
 ```bash
-npm test              # run all tests (265 tests across 18 suites)
+npm test              # run all tests (478 tests across 40 suites)
 npm run test:watch    # watch mode
 ```
+
+### Regression guards
+
+Two suites exist specifically to stop bugs that have shipped before. Keep them updated
+when adding commands:
+
+| Suite | Guards against |
+|-------|----------------|
+| `test/channels/bot-userid-contract.spec.ts` | Passing `channelUserId` where `internalUserId` is required, and bypassing ownership checks on delete |
+| `test/channels/bot-command-routing.spec.ts` | Regex ordering/precedence mistakes (e.g. `xoá khoản vừa rồi` being read as a keyword search, `định mức … 5000000` being recorded as an expense) |
 
 ## Roadmap
 

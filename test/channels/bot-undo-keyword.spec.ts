@@ -17,6 +17,8 @@ import { EditIntentDetector } from "../../src/domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
 import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { DeleteTransaction } from "../../src/application/usecases/DeleteTransaction";
+import { PendingEditManager } from "../../src/application/services/PendingEditManager";
 import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
@@ -80,6 +82,8 @@ describe("BotService - Undo by Keyword", () => {
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       new ConfirmationManager(),
       { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as DeleteTransaction,
+      new PendingEditManager(),
     );
 
     botService.onModuleInit();
