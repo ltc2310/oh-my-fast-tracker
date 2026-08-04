@@ -18,6 +18,8 @@ import { EditTransaction } from "../../src/application/usecases/EditTransaction"
 import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { NotificationPreference } from "../../src/domain/entities/NotificationPreference";
 import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { DeleteTransaction } from "../../src/application/usecases/DeleteTransaction";
+import { PendingEditManager } from "../../src/application/services/PendingEditManager";
 import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
@@ -87,6 +89,8 @@ describe("BotService - Notification Preference Commands", () => {
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
       { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as DeleteTransaction,
+      new PendingEditManager(),
     );
 
     botService.onModuleInit();

@@ -14,15 +14,17 @@ import { GenerateTrendReport } from "../../application/usecases/GenerateTrendRep
 import { CompareMonths, SameMonthError, InvalidMonthError } from "../../application/usecases/CompareMonths";
 import { CheckUserAccess } from "../../application/usecases/CheckUserAccess";
 import { UndoLastTransaction } from "../../application/usecases/UndoLastTransaction";
+import { DeleteTransaction } from "../../application/usecases/DeleteTransaction";
 import { EditTransaction } from "../../application/usecases/EditTransaction";
 import { ConfirmationManager } from "../../application/services/ConfirmationManager";
+import { PendingEditManager } from "../../application/services/PendingEditManager";
 import { TokenService } from "../../domain/ports/TokenService";
 import { EditIntentDetector, EditIntentResult } from "../../domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../domain/ports/NotificationPreferenceRepository";
 import { appConfig } from "../config/app.config";
 import { AdminBotHandler } from "./AdminBotHandler";
-import { detectCategory, expandAbbreviations, normalizeSpelling, extractAmount } from "../parsers/RegexParser";
+import { detectCategory, expandAbbreviations, normalizeSpelling, extractAmount, detectDate } from "../parsers/RegexParser";
 import { isIncomeCategory } from "../../domain/constants/income-categories";
 import { Transaction } from "../../domain/entities/Transaction";
 
@@ -82,6 +84,7 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 
 📋 Xem chi tiêu:
 • hôm nay chi gì (chi tiết hôm nay)
+• chi tiêu hôm nay (cách gõ khác)
 • hôm qua chi gì
 • 5 khoản gần nhất
 • lịch sử 10
@@ -96,9 +99,10 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • so sánh tháng X với tháng Y
 
 ✏️ Sửa / Xoá:
-• Nhấn nút [✏️ Sửa] sau khi ghi → chọn sửa gì
-• Nhấn nút [🗑 Xoá] sau khi ghi → xoá ngay
+• Nhấn [✏️ Sửa] sau khi ghi → chọn số tiền/danh mục/ngày
+• Nhấn [🗑 Xoá] sau khi ghi → xoá ngay
 • xoá (xoá khoản vừa ghi)
+• xoá khoản vừa rồi / xoá khoản cuối
 • xoá khoản cà phê (tìm & xoá theo keyword)
 • xoá khoản grab hôm qua
 • sửa thành 30k (sửa số tiền)
@@ -108,7 +112,8 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 
 💰 Định mức ngân sách:
 • định mức ăn uống 5tr (đặt giới hạn/tháng)
-• định mức di chuyển 2tr
+• định mức di chuyển 500k
+• định mức mua sắm 2000000 (số đầy đủ)
 • xem định mức (xem % sử dụng)
 • xoá định mức ăn uống
 
@@ -138,13 +143,16 @@ const UNDO_REGEX = /^(xo[áa]|xóa|huỷ|hủy|undo|bỏ)\s*(khoản\s*)?(vừa\
 /** Regex to detect targeted delete: "xoá khoản <keyword> [date_ref]" */
 const UNDO_KEYWORD_REGEX = /^(?:xo[áa]|xóa|huỷ|hủy)\s*khoản\s+(.+?)(?:\s+(?:hôm\s*qua|hôm\s*kia|\d+\s*ngày\s*trước))?$/i;
 
-/** Regex to detect list transaction requests */
-const LIST_TODAY_REGEX = /^(hôm\s*nay|today)(\s*(chi\s*gì|chi\s*tiêu))?$/i;
-const LIST_YESTERDAY_REGEX = /^(hôm\s*qua)(\s*(chi\s*gì|chi\s*tiêu))?$/i;
+/** Regex to detect list transaction requests.
+ *  Accepts both "hôm nay chi gì" and the more natural "chi tiêu hôm nay". */
+const LIST_TODAY_REGEX = /^(?:hôm\s*nay(?:\s*(?:chi\s*gì|chi\s*tiêu))?|chi\s*tiêu\s*hôm\s*nay|today)$/i;
+const LIST_YESTERDAY_REGEX = /^(?:hôm\s*qua(?:\s*(?:chi\s*gì|chi\s*tiêu))?|chi\s*tiêu\s*hôm\s*qua)$/i;
 const LIST_RECENT_REGEX = /^(?:(\d+)\s*khoản\s*(?:gần\s*nhất|gần\s*đây)|lịch\s*sử\s*(\d+)|xem\s*(\d+)\s*khoản)$/i;
 
-/** Budget command patterns */
-const SET_BUDGET_REGEX = /^(?:định\s*mức|budget)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*(k|nghìn|ngàn|tr|triệu)$/i;
+/** Budget command patterns.
+ *  Unit is optional so "định mức ăn uống 5000000" works as well as "5tr".
+ *  Without a unit the number is treated as raw VND (validated in the handler). */
+const SET_BUDGET_REGEX = /^(?:định\s*mức|budget)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*(k|nghìn|ngàn|tr|triệu)?$/i;
 const VIEW_BUDGET_REGEX = /^(?:xem\s*định\s*mức|xem\s*budget|định\s*mức)$/i;
 const DELETE_BUDGET_REGEX = /^(?:xoá|xóa|bỏ)\s*định\s*mức\s+(.+)$/i;
 
@@ -266,6 +274,8 @@ export class BotService implements OnModuleInit {
     private readonly editTransaction: EditTransaction,
     private readonly confirmationManager: ConfirmationManager,
     private readonly adminBotHandler: AdminBotHandler,
+    private readonly deleteTransaction: DeleteTransaction,
+    private readonly pendingEditManager: PendingEditManager,
   ) { }
 
   onModuleInit() {
@@ -342,6 +352,13 @@ export class BotService implements OnModuleInit {
         const handled = await this.handleConfirmation(internalUserId, message.userId, trimmedText);
         if (handled) return;
         // If not handled, fall through to normal routing (pending already cleared)
+      }
+
+      // Pending inline edit — user tapped [Đổi số tiền] / [Đổi ngày] and is now
+      // supplying the value. Applies to the TAPPED transaction, not the latest one.
+      if (internalUserId && this.pendingEditManager.has(internalUserId)) {
+        const handled = await this.handlePendingEdit(message.userId, internalUserId, trimmedText);
+        if (handled) return;
       }
 
       // Notification preference commands
@@ -421,16 +438,18 @@ export class BotService implements OnModuleInit {
         return;
       }
 
-      // Targeted delete: "xoá khoản cà phê hôm qua" (must be checked BEFORE bare UNDO_REGEX)
-      const undoKeywordMatch = trimmedText.match(UNDO_KEYWORD_REGEX);
-      if (undoKeywordMatch) {
-        await this.handleUndoByKeyword(message.userId, internalUserId!, undoKeywordMatch[1].trim());
+      // Undo last transaction — bare forms ("xoá", "xoá khoản vừa rồi", "xoá khoản cuối").
+      // MUST be checked BEFORE UNDO_KEYWORD_REGEX, otherwise "xoá khoản vừa rồi" would be
+      // treated as a keyword search for the literal text "vừa rồi".
+      if (UNDO_REGEX.test(trimmedText)) {
+        await this.handleUndo(message.userId, internalUserId!);
         return;
       }
 
-      // Undo / delete last transaction
-      if (UNDO_REGEX.test(message.text.trim())) {
-        await this.handleUndo(message.userId, internalUserId!);
+      // Targeted delete by keyword: "xoá khoản cà phê hôm qua"
+      const undoKeywordMatch = trimmedText.match(UNDO_KEYWORD_REGEX);
+      if (undoKeywordMatch) {
+        await this.handleUndoByKeyword(message.userId, internalUserId!, undoKeywordMatch[1].trim());
         return;
       }
 
@@ -557,14 +576,26 @@ export class BotService implements OnModuleInit {
       return;
     }
 
-    // Parse amount
+    // Parse amount. Unit is optional — without it the number is raw VND.
     const value = parseFloat(rawNumber.replace(",", "."));
-    const u = unit.toLowerCase();
     let amount: number;
-    if (u === "k" || u.startsWith("ngh") || u.startsWith("ngà")) {
-      amount = value * 1000;
+    if (!unit) {
+      // Raw VND. Guard against "định mức ăn uống 5" being read as 5 đồng.
+      if (value < 1000) {
+        await this.channelAdapter.sendText(channelUserId,
+          `Định mức quá nhỏ. Sếp gõ kèm đơn vị (VD: "định mức ${resolvedCategory.toLowerCase()} 5tr") ` +
+          `hoặc số đầy đủ (VD: 5000000).`
+        );
+        return;
+      }
+      amount = value;
     } else {
-      amount = value * 1_000_000;
+      const u = unit.toLowerCase();
+      if (u === "k" || u.startsWith("ngh") || u.startsWith("ngà")) {
+        amount = value * 1000;
+      } else {
+        amount = value * 1_000_000;
+      }
     }
 
     await this.setBudgetLimit.execute(internalUserId, resolvedCategory, amount);
@@ -860,11 +891,14 @@ export class BotService implements OnModuleInit {
         ];
         await this.channelAdapter.sendTextWithKeyboard(channelUserId, text, keyboard);
       } else {
-        // Fallback — delete immediately
-        await this.transactionRepository.deleteById(tx.id!);
+        // Fallback for channels without inline keyboards — delete via the use case
+        // so ownership is still verified.
+        const deleted = await this.deleteTransaction.execute(internalUserId, tx.id!);
         await this.channelAdapter.sendText(
           channelUserId,
-          `Đã xoá khoản ${displayAmount}đ - ${tx.category} (${tx.note}).`,
+          deleted
+            ? `Đã xoá khoản ${displayAmount}đ - ${tx.category} (${tx.note}).`
+            : "Không xoá được, khoản có thể đã bị xoá.",
         );
       }
       return;
@@ -900,6 +934,84 @@ export class BotService implements OnModuleInit {
     } else {
       await this.channelAdapter.sendText(channelUserId, lines.join("\n") + "\n\nGõ số thứ tự để xoá.");
     }
+  }
+
+  /**
+   * Apply a value the user typed after tapping [💰 Đổi số tiền] or [📅 Đổi ngày].
+   * Targets the specific transaction recorded in PendingEditManager.
+   *
+   * Returns true if the message was consumed, false to fall through to normal routing.
+   */
+  private async handlePendingEdit(
+    channelUserId: string,
+    internalUserId: string,
+    text: string,
+  ): Promise<boolean> {
+    const pendingEdit = this.pendingEditManager.get(internalUserId);
+    if (!pendingEdit) return false;
+
+    // Allow bailing out
+    if (CANCEL_REGEX.test(text)) {
+      this.pendingEditManager.clear(internalUserId);
+      await this.channelAdapter.sendText(channelUserId, "Đã huỷ sửa.");
+      return true;
+    }
+
+    if (pendingEdit.field === "amount") {
+      const amount = extractAmount(text);
+      if (!amount || amount <= 0) {
+        await this.channelAdapter.sendText(
+          channelUserId,
+          "Em chưa nhận ra số tiền. Sếp gõ dạng: 30k, 1tr — hoặc gõ \"bỏ\" để huỷ.",
+        );
+        return true; // keep pending so the user can retry
+      }
+
+      const updated = await this.editTransaction.execute(internalUserId, pendingEdit.transactionId, { amount });
+      this.pendingEditManager.clear(internalUserId);
+
+      if (!updated) {
+        await this.channelAdapter.sendText(channelUserId, "Không sửa được, khoản có thể đã bị xoá.");
+        return true;
+      }
+
+      const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
+      await this.channelAdapter.sendText(
+        channelUserId,
+        `Đã sửa thành ${displayAmount}đ - ${updated.category}.`,
+      );
+      return true;
+    }
+
+    // field === "date"
+    const spentAt = detectDate(text);
+    if (!spentAt) {
+      await this.channelAdapter.sendText(
+        channelUserId,
+        "Em chưa nhận ra ngày. Sếp gõ dạng: \"hôm qua\", \"3 ngày trước\" — hoặc gõ \"bỏ\" để huỷ.",
+      );
+      return true; // keep pending so the user can retry
+    }
+
+    if (spentAt > new Date()) {
+      await this.channelAdapter.sendText(channelUserId, "Em không thể đặt ngày trong tương lai.");
+      return true;
+    }
+
+    const updated = await this.editTransaction.execute(internalUserId, pendingEdit.transactionId, { spentAt });
+    this.pendingEditManager.clear(internalUserId);
+
+    if (!updated) {
+      await this.channelAdapter.sendText(channelUserId, "Không sửa được, khoản có thể đã bị xoá.");
+      return true;
+    }
+
+    const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
+    await this.channelAdapter.sendText(
+      channelUserId,
+      `Đã sửa ngày khoản ${displayAmount}đ - ${updated.category} thành ${formatDate(spentAt)}.`,
+    );
+    return true;
   }
 
   private async handleEditIntent(channelUserId: string, internalUserId: string, result: EditIntentResult): Promise<void> {
@@ -1455,21 +1567,192 @@ export class BotService implements OnModuleInit {
     }
   }
 
-  /** Handle inline keyboard callback queries. */
-  private async handleCallbackQuery(query: CallbackQuery): Promise<void> {
-    const { userId, data, id: callbackId, chatId, messageId } = query;
+  /** Acknowledge a callback query if the channel supports it. */
+  private async answerCb(callbackId: string, text?: string): Promise<void> {
+    if (this.channelAdapter.answerCallbackQuery) {
+      await this.channelAdapter.answerCallbackQuery(callbackId, text);
+    }
+  }
 
-    // Find internal user ID for this channel user
-    // (callback queries come from whitelisted users who already have pending confirmations)
-    const pendingEntries = Array.from(this.findPendingByChannelUserId(userId));
-    if (pendingEntries.length === 0) {
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId, "Đã hết hạn, sếp gửi lại nhé");
+  /** Replace a message's text (and optionally its keyboard) if the channel supports it. */
+  private async editCbMessage(
+    chatId: number,
+    messageId: number,
+    text: string,
+    keyboard?: InlineButton[][],
+  ): Promise<void> {
+    if (this.channelAdapter.editMessageText) {
+      await this.channelAdapter.editMessageText(chatId, messageId, text, keyboard);
+    }
+  }
+
+  /**
+   * Resolve the internal user ID (users.id UUID) for a channel-level user ID.
+   * Returns undefined if the user is not whitelisted or lookup fails.
+   *
+   * IMPORTANT: every callback branch that touches persisted data MUST go through
+   * this — passing the raw channel user ID to a use case breaks ownership checks.
+   */
+  private async resolveInternalUserId(channel: string, channelUserId: string): Promise<string | undefined> {
+    try {
+      const accessResult = await this.checkUserAccess.execute(channel, channelUserId);
+      if (!accessResult.allowed) return undefined;
+      return accessResult.user.id;
+    } catch (error) {
+      this.logger.error(`Failed to resolve internal user for ${channelUserId}`, error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Handle inline keyboard callback queries.
+   *
+   * Routing is split in two:
+   *  - "confirm:*" / "cat:*"  → operate on an in-memory pending voice/photo confirmation
+   *  - everything else        → operate on a PERSISTED transaction, and therefore needs
+   *                             the internal user ID resolved from the channel user ID
+   */
+  private async handleCallbackQuery(query: CallbackQuery): Promise<void> {
+    const { userId: channelUserId, data, id: callbackId, chatId, messageId, channel } = query;
+
+    try {
+      // --- Pending voice/photo confirmation branches ---
+      if (data.startsWith("confirm:") || data.startsWith("cat:")) {
+        await this.handleConfirmationCallback(query);
+        return;
       }
+
+      // --- Persisted transaction branches: resolve internal user ID first ---
+      const internalUserId = await this.resolveInternalUserId(channel, channelUserId);
+      if (!internalUserId) {
+        await this.answerCb(callbackId, "Sếp chưa được duyệt hoặc phiên đã hết hạn");
+        return;
+      }
+
+      // Show edit options for a specific transaction
+      if (data.startsWith("edit:")) {
+        const txId = data.slice(5);
+        const editKeyboard: InlineButton[][] = [
+          [
+            { text: "💰 Đổi số tiền", callbackData: `editamt:${txId}` },
+            { text: "📁 Đổi danh mục", callbackData: `editcat:${txId}` },
+          ],
+          [
+            { text: "📅 Đổi ngày", callbackData: `editdate:${txId}` },
+            { text: "❌ Huỷ", callbackData: "editcancel" },
+          ],
+        ];
+        await this.editCbMessage(chatId, messageId, "Sếp muốn sửa gì?", editKeyboard);
+        await this.answerCb(callbackId);
+        return;
+      }
+
+      // Ask for a new amount — remember WHICH transaction so the follow-up text
+      // edits the tapped record, not merely the most recent one.
+      if (data.startsWith("editamt:")) {
+        const txId = data.slice(8);
+        this.pendingEditManager.set(internalUserId, txId, "amount");
+        await this.editCbMessage(chatId, messageId, "💰 Sếp gõ số tiền mới cho khoản này (VD: 30k, 1tr).");
+        await this.answerCb(callbackId, "Gõ số tiền mới");
+        return;
+      }
+
+      // Ask for a new date — same targeting logic as above.
+      if (data.startsWith("editdate:")) {
+        const txId = data.slice(9);
+        this.pendingEditManager.set(internalUserId, txId, "date");
+        await this.editCbMessage(chatId, messageId, '📅 Sếp gõ ngày mới (VD: "hôm qua", "3 ngày trước").');
+        await this.answerCb(callbackId, "Gõ ngày mới");
+        return;
+      }
+
+      // Show the 14-category keyboard for a specific transaction
+      if (data.startsWith("editcat:")) {
+        const txId = data.slice(8);
+        await this.editCbMessage(chatId, messageId, "Chọn danh mục mới:", this.buildEditCategoryKeyboard(txId));
+        await this.answerCb(callbackId);
+        return;
+      }
+
+      if (data === "editcancel") {
+        this.pendingEditManager.clear(internalUserId);
+        await this.editCbMessage(chatId, messageId, "Đã huỷ sửa.");
+        await this.answerCb(callbackId);
+        return;
+      }
+
+      // Apply a category change: "ecat:<txId>:<category>"
+      if (data.startsWith("ecat:")) {
+        const rest = data.slice(5);
+        const sep = rest.indexOf(":");
+        if (sep <= 0) {
+          await this.answerCb(callbackId);
+          return;
+        }
+        const txId = rest.slice(0, sep);
+        const newCategory = rest.slice(sep + 1);
+
+        // internalUserId (not channelUserId) — EditTransaction verifies ownership against it
+        const updated = await this.editTransaction.execute(internalUserId, txId, {
+          category: newCategory,
+          note: newCategory,
+        });
+
+        if (updated) {
+          const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
+          await this.editCbMessage(chatId, messageId, `✅ Đã sửa thành ${displayAmount}đ - ${newCategory}`);
+        } else {
+          await this.editCbMessage(chatId, messageId, "❌ Không sửa được, khoản có thể đã bị xoá.");
+        }
+        this.pendingEditManager.clear(internalUserId);
+        await this.answerCb(callbackId);
+        return;
+      }
+
+      // Delete: "del:<transactionId>" or "del:cancel"
+      if (data.startsWith("del:")) {
+        const target = data.slice(4);
+
+        if (target === "cancel") {
+          await this.editCbMessage(chatId, messageId, "❌ Đã huỷ, không xoá.");
+          await this.answerCb(callbackId);
+          return;
+        }
+
+        // Goes through DeleteTransaction so ownership is verified before deleting
+        const deleted = await this.deleteTransaction.execute(internalUserId, target);
+        if (deleted) {
+          const displayAmount = Math.abs(deleted.amount).toLocaleString("vi-VN");
+          await this.editCbMessage(chatId, messageId, `✅ Đã xoá khoản ${displayAmount}đ - ${deleted.category}.`);
+        } else {
+          await this.editCbMessage(chatId, messageId, "❌ Không tìm thấy khoản để xoá (có thể đã bị xoá trước đó).");
+        }
+        await this.answerCb(callbackId);
+        return;
+      }
+
+      // Unknown callback data — acknowledge so the button stops spinning
+      await this.answerCb(callbackId);
+    } catch (error) {
+      this.logger.error(`Callback query failed (data=${data})`, error);
+      await this.answerCb(callbackId, "Có lỗi xảy ra, sếp thử lại nhé");
+    }
+  }
+
+  /**
+   * Handle "confirm:*" and "cat:*" callbacks, which act on an in-memory
+   * pending voice/photo confirmation rather than a persisted transaction.
+   */
+  private async handleConfirmationCallback(query: CallbackQuery): Promise<void> {
+    const { userId: channelUserId, data, id: callbackId, chatId, messageId } = query;
+
+    const pending = this.confirmationManager.findByChannelUserId(channelUserId);
+    if (!pending) {
+      await this.answerCb(callbackId, "Đã hết hạn, sếp gửi lại nhé");
       return;
     }
 
-    const [internalUserId, pending] = pendingEntries[0];
+    const internalUserId = pending.userId;
 
     if (data === "confirm:save") {
       // Save all pending expenses
@@ -1559,157 +1842,13 @@ export class BotService implements OnModuleInit {
       this.confirmationManager.clear(internalUserId);
 
       const savedText = `✅ Đã ghi nhận ${Math.abs(expense.amount).toLocaleString("vi-VN")}đ - ${category}`;
-      if (this.channelAdapter.editMessageText) {
-        await this.channelAdapter.editMessageText(chatId, messageId, savedText);
-      }
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId);
-      }
+      await this.editCbMessage(chatId, messageId, savedText);
+      await this.answerCb(callbackId);
       return;
     }
 
-    // Edit transaction: "edit:<transactionId>" — show edit options
-    if (data.startsWith("edit:")) {
-      const txId = data.slice(5);
-      const editKeyboard = [
-        [
-          { text: "💰 Đổi số tiền", callbackData: `editamt:${txId}` },
-          { text: "📁 Đổi danh mục", callbackData: `editcat:${txId}` },
-        ],
-        [
-          { text: "📅 Đổi ngày", callbackData: `editdate:${txId}` },
-          { text: "❌ Huỷ", callbackData: "editcancel" },
-        ],
-      ];
-      if (this.channelAdapter.editMessageText) {
-        await this.channelAdapter.editMessageText(chatId, messageId, "Sếp muốn sửa gì?", editKeyboard);
-      }
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId);
-      }
-      return;
-    }
-
-    // Edit sub-actions
-    if (data.startsWith("editamt:")) {
-      // Prompt user to type new amount
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId, "Gõ số tiền mới (VD: 30k)");
-      }
-      if (this.channelAdapter.editMessageText) {
-        const txId = data.slice(8);
-        await this.channelAdapter.editMessageText(chatId, messageId, `Gõ số tiền mới cho khoản này (VD: 30k, 1tr).\nDùng lệnh: sửa thành [số tiền]`);
-      }
-      return;
-    }
-
-    if (data.startsWith("editcat:")) {
-      // Show category selection with txId encoded
-      const txId = data.slice(8);
-      const categoryKeyboard = this.buildEditCategoryKeyboard(txId);
-      if (this.channelAdapter.editMessageText) {
-        await this.channelAdapter.editMessageText(chatId, messageId, "Chọn danh mục mới:", categoryKeyboard);
-      }
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId);
-      }
-      return;
-    }
-
-    if (data.startsWith("editdate:")) {
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId, "Gõ: sửa ngày hôm qua");
-      }
-      if (this.channelAdapter.editMessageText) {
-        await this.channelAdapter.editMessageText(chatId, messageId, `Gõ ngày mới (VD: "sửa ngày hôm qua", "sửa 3 ngày trước")`);
-      }
-      return;
-    }
-
-    if (data === "editcancel") {
-      if (this.channelAdapter.editMessageText) {
-        await this.channelAdapter.editMessageText(chatId, messageId, "Đã huỷ sửa.");
-      }
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId);
-      }
-      return;
-    }
-
-    // Edit category selection: "ecat:<txId>:<category>"
-    if (data.startsWith("ecat:")) {
-      const parts = data.slice(5);
-      const colonIdx = parts.indexOf(":");
-      if (colonIdx > 0) {
-        const txId = parts.slice(0, colonIdx);
-        const newCategory = parts.slice(colonIdx + 1);
-
-        const updated = await this.editTransaction.execute(userId, txId, { category: newCategory, note: newCategory });
-        if (updated) {
-          const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
-          if (this.channelAdapter.editMessageText) {
-            await this.channelAdapter.editMessageText(chatId, messageId, `✅ Đã sửa thành ${displayAmount}đ - ${newCategory}`);
-          }
-        } else {
-          if (this.channelAdapter.editMessageText) {
-            await this.channelAdapter.editMessageText(chatId, messageId, "❌ Không sửa được, khoản có thể đã bị xoá.");
-          }
-        }
-        if (this.channelAdapter.answerCallbackQuery) {
-          await this.channelAdapter.answerCallbackQuery(callbackId);
-        }
-      }
-      return;
-    }
-
-    // Delete transaction: "del:<transactionId>" or "del:cancel"
-    if (data.startsWith("del:")) {
-      const target = data.slice(4);
-      if (target === "cancel") {
-        if (this.channelAdapter.editMessageText) {
-          await this.channelAdapter.editMessageText(chatId, messageId, "❌ Đã huỷ, không xoá.");
-        }
-        if (this.channelAdapter.answerCallbackQuery) {
-          await this.channelAdapter.answerCallbackQuery(callbackId);
-        }
-        return;
-      }
-
-      // Delete the transaction by ID
-      const deleted = await this.transactionRepository.deleteById(target);
-      if (deleted) {
-        if (this.channelAdapter.editMessageText) {
-          await this.channelAdapter.editMessageText(chatId, messageId, "✅ Đã xoá khoản thành công.");
-        }
-      } else {
-        if (this.channelAdapter.editMessageText) {
-          await this.channelAdapter.editMessageText(chatId, messageId, "❌ Không tìm thấy khoản để xoá (có thể đã bị xoá trước đó).");
-        }
-      }
-      if (this.channelAdapter.answerCallbackQuery) {
-        await this.channelAdapter.answerCallbackQuery(callbackId);
-      }
-      return;
-    }
-
-    // Unknown callback data
-    if (this.channelAdapter.answerCallbackQuery) {
-      await this.channelAdapter.answerCallbackQuery(callbackId);
-    }
-  }
-
-  /** Find pending confirmation by channel user ID (reverse lookup). */
-  private *findPendingByChannelUserId(channelUserId: string): Generator<[string, { expenses: ParsedExpense[]; source: "voice" | "photo" }]> {
-    // ConfirmationManager stores by internalUserId, but callback comes with channelUserId.
-    // We need to check if the pending entry's channelUserId matches.
-    // The ConfirmationManager stores channelUserId in the PendingConfirmation.
-    const allPending = this.confirmationManager as unknown as { pending: Map<string, { channelUserId: string; expenses: ParsedExpense[]; source: "voice" | "photo" }> };
-    if (!allPending.pending) return;
-    for (const [internalId, entry] of allPending.pending) {
-      if (entry.channelUserId === channelUserId) {
-        yield [internalId, entry];
-      }
-    }
+    // Unrecognised confirm/cat action — acknowledge so the button stops spinning
+    await this.answerCb(callbackId);
   }
 
   /** Build inline keyboard with all 14 categories in rows of 3. */

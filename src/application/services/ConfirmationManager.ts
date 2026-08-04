@@ -70,6 +70,26 @@ export class ConfirmationManager {
   }
 
   /**
+   * Reverse lookup: find a pending confirmation by the channel user ID.
+   * Needed when handling inline keyboard callbacks, which only carry the
+   * channel-level user ID (e.g. Telegram chat ID), not the internal user ID.
+   *
+   * Returns undefined if no entry exists or the entry has expired.
+   */
+  findByChannelUserId(channelUserId: string): PendingConfirmation | undefined {
+    for (const entry of this.pending.values()) {
+      if (entry.channelUserId !== channelUserId) continue;
+
+      if (this.isExpired(entry)) {
+        this.clear(entry.userId);
+        return undefined;
+      }
+      return entry;
+    }
+    return undefined;
+  }
+
+  /**
    * Remove the PendingConfirmation for a user and clear its timeout.
    */
   clear(userId: string): void {

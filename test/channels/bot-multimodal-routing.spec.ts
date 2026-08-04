@@ -1,6 +1,8 @@
 import { BotService } from "../../src/infrastructure/channels/bot.service";
 import { ChannelAdapter, IncomingMessage } from "../../src/domain/ports/ChannelAdapter";
 import { TokenService } from "../../src/domain/ports/TokenService";
+import { DeleteTransaction } from "../../src/application/usecases/DeleteTransaction";
+import { PendingEditManager } from "../../src/application/services/PendingEditManager";
 import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
 import { SetBudgetLimit } from "../../src/application/usecases/SetBudgetLimit";
@@ -152,6 +154,8 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       mockConfirmationManager,
       { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as DeleteTransaction,
+      new PendingEditManager(),
     );
 
     botService.onModuleInit();

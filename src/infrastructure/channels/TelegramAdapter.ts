@@ -227,6 +227,7 @@ export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
         await handler({
           id: cbQuery.id,
           userId: String(cbQuery.message.chat.id),
+          channel: "telegram",
           messageId: cbQuery.message.message_id,
           chatId: cbQuery.message.chat.id,
           data: cbQuery.data,

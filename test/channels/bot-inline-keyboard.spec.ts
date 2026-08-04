@@ -17,6 +17,8 @@ import { EditIntentDetector } from "../../src/domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
 import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { DeleteTransaction } from "../../src/application/usecases/DeleteTransaction";
+import { PendingEditManager } from "../../src/application/services/PendingEditManager";
 import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { ConfirmationManager, PendingConfirmation } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
@@ -87,6 +89,8 @@ describe("BotService - Inline Keyboard", () => {
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       confirmationManager,
       { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as DeleteTransaction,
+      new PendingEditManager(),
     );
 
     botService.onModuleInit();
@@ -124,6 +128,7 @@ describe("BotService - Inline Keyboard", () => {
       await callbackHandler({
         id: "cb-1",
         userId: CHANNEL_USER_ID,
+        channel: "telegram",
         messageId: 42,
         chatId: 123,
         data: "confirm:save",
@@ -153,6 +158,7 @@ describe("BotService - Inline Keyboard", () => {
       await callbackHandler({
         id: "cb-2",
         userId: CHANNEL_USER_ID,
+        channel: "telegram",
         messageId: 42,
         chatId: 123,
         data: "confirm:cancel",
@@ -175,6 +181,7 @@ describe("BotService - Inline Keyboard", () => {
       await callbackHandler({
         id: "cb-3",
         userId: CHANNEL_USER_ID,
+        channel: "telegram",
         messageId: 42,
         chatId: 123,
         data: "confirm:cat",
@@ -201,6 +208,7 @@ describe("BotService - Inline Keyboard", () => {
       await callbackHandler({
         id: "cb-4",
         userId: CHANNEL_USER_ID,
+        channel: "telegram",
         messageId: 42,
         chatId: 123,
         data: "cat:Di chuyển",
@@ -215,6 +223,7 @@ describe("BotService - Inline Keyboard", () => {
       expect(mockChannelAdapter.editMessageText).toHaveBeenCalledWith(
         123, 42,
         expect.stringContaining("Di chuyển"),
+        undefined,
       );
     });
   });
@@ -226,6 +235,7 @@ describe("BotService - Inline Keyboard", () => {
       await callbackHandler({
         id: "cb-5",
         userId: CHANNEL_USER_ID,
+        channel: "telegram",
         messageId: 42,
         chatId: 123,
         data: "confirm:save",

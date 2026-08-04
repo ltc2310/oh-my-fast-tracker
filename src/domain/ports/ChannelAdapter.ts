@@ -30,7 +30,10 @@ export interface InlineButton {
 /** Callback query from an inline keyboard button press. */
 export interface CallbackQuery {
   id: string;
+  /** Channel-level user ID (e.g. Telegram chat ID) — NOT the internal user ID. */
   userId: string;
+  /** Channel this callback came from (e.g. 'telegram'). Required to resolve the internal user. */
+  channel: string;
   messageId: number;
   chatId: number;
   data: string;
