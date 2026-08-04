@@ -10,6 +10,7 @@ import { HybridEditDetector } from "./parsers/HybridEditDetector";
 import { SupabaseTransactionRepository } from "./repositories/SupabaseTransactionRepository";
 import { SupabaseUserRepository } from "./repositories/SupabaseUserRepository";
 import { SupabaseNotificationPreferenceRepository } from "./repositories/SupabaseNotificationPreferenceRepository";
+import { SupabaseBudgetLimitRepository } from "./repositories/SupabaseBudgetLimitRepository";
 import { JwtTokenService } from "./auth/JwtTokenService";
 import { TelegramAdapter } from "./channels/TelegramAdapter";
 import { TelegramNotificationSender } from "./channels/TelegramNotificationSender";
@@ -32,6 +33,7 @@ import { GeminiMultimodalParser } from "./parsers/GeminiMultimodalParser";
     { provide: "TransactionRepository", useClass: SupabaseTransactionRepository },
     { provide: "UserRepository", useClass: SupabaseUserRepository },
     { provide: "NotificationPreferenceRepository", useClass: SupabaseNotificationPreferenceRepository },
+    { provide: "BudgetLimitRepository", useClass: SupabaseBudgetLimitRepository },
     { provide: "TokenService", useClass: JwtTokenService },
     { provide: "ChannelAdapter", useClass: TelegramAdapter },
     { provide: "NotificationSender", useClass: TelegramNotificationSender },
@@ -46,6 +48,7 @@ import { GeminiMultimodalParser } from "./parsers/GeminiMultimodalParser";
     "TransactionRepository",
     "UserRepository",
     "NotificationPreferenceRepository",
+    "BudgetLimitRepository",
     "TokenService",
     "ChannelAdapter",
     "NotificationSender",

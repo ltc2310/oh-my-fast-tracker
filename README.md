@@ -22,6 +22,11 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 - **Proactive notifications** — Automated scheduled messages via `@nestjs/schedule`: conditional daily reminder (only if no transaction logged today), weekly digest (Sunday summary with top categories and week-over-week comparison), monthly summary (category breakdown and budget status). Each notification type is independently opt-in/opt-out per user.
 - **Voice message input** — Send a voice message describing your expense in Vietnamese → Gemini 2.0 Flash multimodal transcribes and extracts amount, category, note → confirmation flow before saving
 - **Bank transfer screenshot** — Send a screenshot of a bank transfer → Gemini 2.0 Flash multimodal OCR extracts amount, recipient, bank → confirmation flow before saving
+- **List transactions in chat** — "hôm nay chi gì", "5 khoản gần nhất", "hôm qua chi gì" to view transaction details without opening the web dashboard
+- **Inline keyboard** — Confirmation flow (voice/ảnh) with tap-to-confirm buttons (Lưu, Đổi danh mục, Đổi số tiền, Huỷ). After recording an expense, inline [✏️ Sửa] [🗑 Xoá] buttons appear for quick edit/delete. Category selection via 14-button keyboard. Delete confirmation via inline buttons.
+- **Budget limits per category** — "định mức ăn uống 5tr" sets monthly spending cap. Inline warnings at 80% (⚠️) and 100% (🚨) usage. "xem định mức" shows all budgets with % progress.
+- **Delete by keyword** — "xoá khoản cà phê" finds matching transactions and presents inline keyboard for selection. Supports multiple matches with numbered list.
+- **Admin chat commands** — `/pending`, `/approve <id>`, `/approve all`, `/block <id>`, `/stats` for admin users (configured via `ADMIN_CHAT_IDS` env var). Auto-notification to admins when new users register.
 
 ## Architecture
 
@@ -136,6 +141,7 @@ npm run start:dev      # development with hot-reload
 | `GEMINI_MODEL` | Gemini model (default: gemini-2.0-flash-lite) |
 | `GEMINI_MULTIMODAL_MODEL` | Gemini model for voice/image parsing (default: gemini-2.0-flash) |
 | `ADMIN_API_SECRET` | Secret for Admin API authentication (X-Admin-Secret header) |
+| `ADMIN_CHAT_IDS` | Comma-separated Telegram chat IDs of admin users (for /pending, /approve, /block, /stats commands) |
 | `DAILY_REMINDER_CRON` | Cron for daily reminder (default: `0 20 * * *` — 8 PM daily) |
 | `WEEKLY_DIGEST_CRON` | Cron for weekly digest (default: `0 20 * * 0` — 8 PM Sunday) |
 | `MONTHLY_SUMMARY_CRON` | Cron for monthly summary (default: `0 20 L * *` — 8 PM last day of month) |
@@ -176,6 +182,16 @@ notification_preferences (
   monthly_summary  boolean NOT NULL DEFAULT true,
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
+)
+
+budget_limits (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          uuid NOT NULL REFERENCES users(id),
+  category         text NOT NULL,
+  monthly_limit    numeric NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, category)
 )
 ```
 
@@ -243,6 +259,23 @@ npm run migrate   # applies all SQL files in order
 | `đổi danh mục [tên]` | Change category of pending transaction |
 | `đổi số tiền [số]` | Change amount of pending transaction |
 | `bỏ` | Cancel pending voice/photo transaction |
+| `hôm nay chi gì` | List today's expenses with time |
+| `hôm qua chi gì` | List yesterday's expenses |
+| `5 khoản gần nhất` | List N most recent transactions |
+| `lịch sử 3` | List 3 most recent transactions |
+| `xem 7 khoản` | List 7 most recent transactions |
+| [✏️ Sửa] button | After recording — tap to edit amount/category/date |
+| [🗑 Xoá] button | After recording — tap to delete immediately |
+| `xoá khoản cà phê` | Find and delete a transaction by keyword |
+| `xoá khoản grab hôm qua` | Delete specific transaction with keyword + date |
+| `định mức ăn uống 5tr` | Set monthly budget limit for a category |
+| `xem định mức` | View all budget limits with % usage |
+| `xoá định mức ăn uống` | Remove budget limit for a category |
+| `/pending` | (Admin) List pending users |
+| `/approve <id>` | (Admin) Approve a user |
+| `/approve all` | (Admin) Approve all pending users |
+| `/block <id>` | (Admin) Block a user |
+| `/stats` | (Admin) View system statistics |
 
 ## API Endpoints
 
@@ -427,11 +460,15 @@ npm run test:watch    # watch mode
 - [x] **Undo / Edit / Delete transactions** — "xoá", "sửa thành 30k", "sửa thành ăn uống", "sửa ngày hôm qua". Natural language edit with hybrid regex + AI detection. Repository supports findById, findLastByUser, update, deleteById. *(completed)*
 - [x] **/start & /help commands** — Onboarding message for new users, full command reference for whitelisted users. *(completed)*
 - [ ] **Email report delivery** — Send expense reports via email with Excel attachment and professional HTML body. Users trigger via "gửi báo cáo" phrases. Email collected on first use and saved permanently. *(spec complete, implementation pending)*
-- [ ] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100% with option to update limit. View budget status via "xem định mức". *(spec complete, implementation pending)*
+- [x] **Category budget limits & alerts** — Set monthly spending caps per category (e.g., "định mức ăn uống 5tr"). Bot warns inline at 80% usage, alerts at 100%. View budget status via "xem định mức", delete via "xoá định mức". *(completed)*
 - [x] **Proactive notifications** — Daily reminder (conditional), weekly digest, monthly summary via @nestjs/schedule. Per-user opt-in/opt-out with Vietnamese chat commands. *(completed)*
 - [x] **Month-over-month comparison** — "so sánh tháng 7 với tháng 8" shows spending comparison by category between two months
 - [x] **Voice message support** — Telegram voice → Gemini 2.0 Flash multimodal transcription + expense extraction → confirmation flow *(completed)*
 - [x] **Bank transfer screenshot** — Gửi ảnh chuyển khoản ngân hàng để bot tự nhận dạng số tiền, người nhận, ngân hàng via Gemini 2.0 Flash multimodal + confirmation flow *(completed)*
+- [x] **Inline keyboard** — Confirmation flow with tap-to-confirm buttons, category selection via 14-button keyboard, delete confirmation. Backward-compatible with text commands. *(completed)*
+- [x] **List transactions in chat** — "hôm nay chi gì", "5 khoản gần nhất", "hôm qua chi gì" to quickly review spending without opening web. *(completed)*
+- [x] **Admin chat commands** — `/pending`, `/approve`, `/block`, `/stats` for admin users in Telegram. Auto-notification on new user registration. *(completed)*
+- [x] **Delete by keyword** — "xoá khoản cà phê" finds matching transactions with fuzzy search, presents inline keyboard for selection when multiple matches. *(completed)*
 - [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
 - [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
 - [ ] **Production deployment** — Render/Railway with webhook mode for Telegram

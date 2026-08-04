@@ -96,6 +96,33 @@ export class SupabaseTransactionRepository implements TransactionRepository {
     return this.mapRow(data);
   }
 
+  async findRecentByUser(userId: string, limit: number): Promise<Transaction[]> {
+    const { data, error } = await this.client
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("spent_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(`Failed to find recent transactions: ${error.message}`);
+
+    return (data ?? []).map((row) => this.mapRow(row));
+  }
+
+  async findByUserAndKeyword(userId: string, keyword: string, limit = 5): Promise<Transaction[]> {
+    const { data, error } = await this.client
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .or(`note.ilike.%${keyword}%,category.ilike.%${keyword}%`)
+      .order("spent_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(`Failed to find transactions by keyword: ${error.message}`);
+
+    return (data ?? []).map((row) => this.mapRow(row));
+  }
+
   async update(
     id: string,
     fields: Partial<Pick<Transaction, 'amount' | 'category' | 'note' | 'spentAt'>>,

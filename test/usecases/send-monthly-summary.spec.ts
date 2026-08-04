@@ -45,6 +45,8 @@ describe('SendMonthlySummary', () => {
       findDistinctUserIds: jest.fn(),
       findById: jest.fn(),
       findLastByUser: jest.fn(),
+      findRecentByUser: jest.fn().mockResolvedValue([]),
+      findByUserAndKeyword: jest.fn().mockResolvedValue([]),
       update: jest.fn(),
       deleteById: jest.fn(),
     };

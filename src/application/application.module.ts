@@ -1,4 +1,9 @@
 import { Module } from "@nestjs/common";
+import { ListTransactions } from "./usecases/ListTransactions";
+import { SetBudgetLimit } from "./usecases/SetBudgetLimit";
+import { GetBudgetStatus } from "./usecases/GetBudgetStatus";
+import { CheckBudgetAfterRecord } from "./usecases/CheckBudgetAfterRecord";
+import { DeleteBudgetLimit } from "./usecases/DeleteBudgetLimit";
 import { RecordTransaction } from "./usecases/RecordTransaction";
 import { GenerateWeeklyReport } from "./usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "./usecases/GenerateTrendReport";
@@ -29,6 +34,7 @@ import { ConfirmationManager } from "./services/ConfirmationManager";
 @Module({
   providers: [
     RecordTransaction,
+    ListTransactions,
     GenerateWeeklyReport,
     GenerateTrendReport,
     CompareMonths,
@@ -48,9 +54,18 @@ import { ConfirmationManager } from "./services/ConfirmationManager";
     SendMonthlySummary,
     NotificationScheduler,
     ConfirmationManager,
+    SetBudgetLimit,
+    GetBudgetStatus,
+    CheckBudgetAfterRecord,
+    DeleteBudgetLimit,
   ],
   exports: [
     RecordTransaction,
+    ListTransactions,
+    SetBudgetLimit,
+    GetBudgetStatus,
+    CheckBudgetAfterRecord,
+    DeleteBudgetLimit,
     GenerateWeeklyReport,
     GenerateTrendReport,
     CompareMonths,

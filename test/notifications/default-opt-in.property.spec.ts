@@ -46,6 +46,8 @@ describe('Property 10: Default Opt-In for Missing Preferences', () => {
             findDistinctUserIds: jest.fn(),
             findById: jest.fn(),
             findLastByUser: jest.fn(),
+      findRecentByUser: jest.fn().mockResolvedValue([]),
+      findByUserAndKeyword: jest.fn().mockResolvedValue([]),
             update: jest.fn(),
             deleteById: jest.fn(),
           };

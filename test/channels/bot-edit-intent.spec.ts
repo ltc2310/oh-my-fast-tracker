@@ -4,6 +4,11 @@ import { TokenService } from "../../src/domain/ports/TokenService";
 import { EditIntentDetector, EditIntentResult } from "../../src/domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
+import { SetBudgetLimit } from "../../src/application/usecases/SetBudgetLimit";
+import { GetBudgetStatus } from "../../src/application/usecases/GetBudgetStatus";
+import { CheckBudgetAfterRecord } from "../../src/application/usecases/CheckBudgetAfterRecord";
+import { DeleteBudgetLimit } from "../../src/application/usecases/DeleteBudgetLimit";
+import { ListTransactions } from "../../src/application/usecases/ListTransactions";
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
 import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
@@ -13,6 +18,7 @@ import { CompareMonths } from "../../src/application/usecases/CompareMonths";
 import { Transaction } from "../../src/domain/entities/Transaction";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
 import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { ConfigType } from "@nestjs/config";
 import { appConfig } from "../../src/infrastructure/config/app.config";
@@ -25,7 +31,7 @@ describe("BotService - Edit Intent Flow", () => {
   let mockChannelAdapter: jest.Mocked<ChannelAdapter>;
   let mockTokenService: jest.Mocked<TokenService>;
   let mockEditIntentDetector: jest.Mocked<EditIntentDetector>;
-  let mockTransactionRepository: jest.Mocked<Pick<TransactionRepository, "findLastByUser">>;
+  let mockTransactionRepository: jest.Mocked<Pick<TransactionRepository, "findLastByUser" | "findRecentByUser">>;
   let mockRecordTransaction: jest.Mocked<RecordTransaction>;
   let mockGenerateWeeklyReport: jest.Mocked<GenerateWeeklyReport>;
   let mockGenerateTrendReport: jest.Mocked<GenerateTrendReport>;
@@ -68,6 +74,7 @@ describe("BotService - Edit Intent Flow", () => {
 
     mockTransactionRepository = {
       findLastByUser: jest.fn().mockResolvedValue(fakeTransaction),
+      findRecentByUser: jest.fn().mockResolvedValue([]),
     };
 
     mockRecordTransaction = {
@@ -103,6 +110,11 @@ describe("BotService - Edit Intent Flow", () => {
       { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
       { parseVoice: jest.fn().mockResolvedValue([]), parseImage: jest.fn().mockResolvedValue([]) } as unknown as MultimodalParser,
       mockRecordTransaction,
+      { execute: jest.fn().mockResolvedValue({ transactions: [], total: 0, totalIncome: 0, hasMore: false }) } as unknown as ListTransactions,
+      { execute: jest.fn().mockResolvedValue({}) } as unknown as SetBudgetLimit,
+      { execute: jest.fn().mockResolvedValue({ statuses: [], totalLimit: 0, totalSpent: 0 }) } as unknown as GetBudgetStatus,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CheckBudgetAfterRecord,
+      { execute: jest.fn().mockResolvedValue(false) } as unknown as DeleteBudgetLimit,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
@@ -110,6 +122,7 @@ describe("BotService - Edit Intent Flow", () => {
       mockUndoLastTransaction,
       mockEditTransaction,
       { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
+      { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
     );
 
     botService.onModuleInit();
