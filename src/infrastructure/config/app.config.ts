@@ -27,6 +27,7 @@ export const aiConfig = registerAs("ai", () => ({
 
 export const adminConfig = registerAs("admin", () => ({
   secret: requireEnv("ADMIN_API_SECRET"),
+  chatIds: (process.env.ADMIN_CHAT_IDS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
 }));
 
 export const notificationConfig = registerAs("notification", () => ({

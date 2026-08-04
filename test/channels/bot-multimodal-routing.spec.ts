@@ -1,7 +1,13 @@
 import { BotService } from "../../src/infrastructure/channels/bot.service";
 import { ChannelAdapter, IncomingMessage } from "../../src/domain/ports/ChannelAdapter";
 import { TokenService } from "../../src/domain/ports/TokenService";
+import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
+import { SetBudgetLimit } from "../../src/application/usecases/SetBudgetLimit";
+import { GetBudgetStatus } from "../../src/application/usecases/GetBudgetStatus";
+import { CheckBudgetAfterRecord } from "../../src/application/usecases/CheckBudgetAfterRecord";
+import { DeleteBudgetLimit } from "../../src/application/usecases/DeleteBudgetLimit";
+import { ListTransactions } from "../../src/application/usecases/ListTransactions";
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
 import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
@@ -108,6 +114,7 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
     mockTransactionRepository = {
       save: jest.fn().mockResolvedValue({}),
       findLastByUser: jest.fn().mockResolvedValue(null),
+      findRecentByUser: jest.fn().mockResolvedValue([]),
       findByUserAndDateRange: jest.fn().mockResolvedValue([]),
       findDistinctUserIds: jest.fn().mockResolvedValue([]),
       findById: jest.fn().mockResolvedValue(null),
@@ -132,6 +139,11 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
       mockMultimodalParser,
       mockRecordTransaction,
+      { execute: jest.fn().mockResolvedValue({ transactions: [], total: 0, totalIncome: 0, hasMore: false }) } as unknown as ListTransactions,
+      { execute: jest.fn().mockResolvedValue({}) } as unknown as SetBudgetLimit,
+      { execute: jest.fn().mockResolvedValue({ statuses: [], totalLimit: 0, totalSpent: 0 }) } as unknown as GetBudgetStatus,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CheckBudgetAfterRecord,
+      { execute: jest.fn().mockResolvedValue(false) } as unknown as DeleteBudgetLimit,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
@@ -139,6 +151,7 @@ describe("BotService - Voice/Photo Multimodal Routing", () => {
       mockUndoLastTransaction,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       mockConfirmationManager,
+      { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
     );
 
     botService.onModuleInit();

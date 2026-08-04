@@ -5,6 +5,9 @@ import {
   IncomingMessage,
   PhotoAttachment,
   VoiceAttachment,
+  InlineButton,
+  CallbackQuery,
+  SentMessage,
 } from "../../domain/ports/ChannelAdapter";
 import { ConfigType } from "@nestjs/config";
 import { telegramConfig } from "../config/app.config";
@@ -200,5 +203,63 @@ export class TelegramAdapter implements ChannelAdapter, OnModuleInit {
     // Polling already starts on construction; this method is kept so the
     // interface stays symmetric with other adapters (e.g. Zalo) that need
     // an explicit start step.
+  }
+
+  // --- Inline keyboard methods ---
+
+  async sendTextWithKeyboard(userId: string, text: string, keyboard: InlineButton[][]): Promise<SentMessage> {
+    const inlineKeyboard = keyboard.map((row) =>
+      row.map((btn) => ({ text: btn.text, callback_data: btn.callbackData })),
+    );
+
+    const result = await this.bot.sendMessage(userId, text, {
+      reply_markup: { inline_keyboard: inlineKeyboard },
+    });
+
+    return { messageId: result.message_id, chatId: result.chat.id };
+  }
+
+  onCallbackQuery(handler: (query: CallbackQuery) => Promise<void>): void {
+    this.bot.on("callback_query", async (cbQuery) => {
+      if (!cbQuery.data || !cbQuery.message) return;
+
+      try {
+        await handler({
+          id: cbQuery.id,
+          userId: String(cbQuery.message.chat.id),
+          messageId: cbQuery.message.message_id,
+          chatId: cbQuery.message.chat.id,
+          data: cbQuery.data,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Callback query handler error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    });
+  }
+
+  async answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+    await this.bot.answerCallbackQuery(callbackQueryId, { text });
+  }
+
+  async editMessageText(chatId: number, messageId: number, text: string, keyboard?: InlineButton[][]): Promise<void> {
+    const options: TelegramBot.EditMessageTextOptions = {
+      chat_id: chatId,
+      message_id: messageId,
+    };
+
+    if (keyboard) {
+      options.reply_markup = {
+        inline_keyboard: keyboard.map((row) =>
+          row.map((btn) => ({ text: btn.text, callback_data: btn.callbackData })),
+        ),
+      };
+    } else {
+      // Remove keyboard by setting empty inline_keyboard
+      options.reply_markup = { inline_keyboard: [] };
+    }
+
+    await this.bot.editMessageText(text, options);
   }
 }

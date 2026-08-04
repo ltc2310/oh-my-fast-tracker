@@ -2,6 +2,11 @@ import { BotService } from "../../src/infrastructure/channels/bot.service";
 import { ChannelAdapter, IncomingMessage } from "../../src/domain/ports/ChannelAdapter";
 import { TokenService } from "../../src/domain/ports/TokenService";
 import { RecordTransaction } from "../../src/application/usecases/RecordTransaction";
+import { SetBudgetLimit } from "../../src/application/usecases/SetBudgetLimit";
+import { GetBudgetStatus } from "../../src/application/usecases/GetBudgetStatus";
+import { CheckBudgetAfterRecord } from "../../src/application/usecases/CheckBudgetAfterRecord";
+import { DeleteBudgetLimit } from "../../src/application/usecases/DeleteBudgetLimit";
+import { ListTransactions } from "../../src/application/usecases/ListTransactions";
 import { GenerateWeeklyReport } from "../../src/application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../src/application/usecases/GenerateTrendReport";
 import { CheckUserAccess } from "../../src/application/usecases/CheckUserAccess";
@@ -12,6 +17,7 @@ import { EditIntentDetector } from "../../src/domain/ports/EditIntentDetector";
 import { TransactionRepository } from "../../src/domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../src/domain/ports/NotificationPreferenceRepository";
 import { MultimodalParser } from "../../src/domain/ports/MultimodalParser";
+import { AdminBotHandler } from "../../src/infrastructure/channels/AdminBotHandler";
 import { ConfirmationManager } from "../../src/application/services/ConfirmationManager";
 import { TrendReport } from "../../src/domain/entities/TrendReport";
 import { ConfigType } from "@nestjs/config";
@@ -94,10 +100,15 @@ describe("BotService - Trend Report Routing", () => {
       mockTokenService,
       mockConfig as unknown as ConfigType<typeof appConfig>,
       { detect: jest.fn().mockResolvedValue(null) } as unknown as EditIntentDetector,
-      { findLastByUser: jest.fn().mockResolvedValue(null) } as unknown as TransactionRepository,
+      { findLastByUser: jest.fn().mockResolvedValue(null), findRecentByUser: jest.fn().mockResolvedValue([]) } as unknown as TransactionRepository,
       { findByUserId: jest.fn().mockResolvedValue(null), upsert: jest.fn().mockResolvedValue({}), findEligibleUserIds: jest.fn().mockResolvedValue([]), createDefault: jest.fn().mockResolvedValue({}) } as unknown as NotificationPreferenceRepository,
       { parseVoice: jest.fn().mockResolvedValue([]), parseImage: jest.fn().mockResolvedValue([]) } as unknown as MultimodalParser,
       mockRecordTransaction,
+      { execute: jest.fn().mockResolvedValue({ transactions: [], total: 0, totalIncome: 0, hasMore: false }) } as unknown as ListTransactions,
+      { execute: jest.fn().mockResolvedValue({}) } as unknown as SetBudgetLimit,
+      { execute: jest.fn().mockResolvedValue({ statuses: [], totalLimit: 0, totalSpent: 0 }) } as unknown as GetBudgetStatus,
+      { execute: jest.fn().mockResolvedValue(null) } as unknown as CheckBudgetAfterRecord,
+      { execute: jest.fn().mockResolvedValue(false) } as unknown as DeleteBudgetLimit,
       mockGenerateWeeklyReport,
       mockGenerateTrendReport,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as CompareMonths,
@@ -105,6 +116,7 @@ describe("BotService - Trend Report Routing", () => {
       { execute: jest.fn().mockResolvedValue(null) } as unknown as UndoLastTransaction,
       { execute: jest.fn().mockResolvedValue(null) } as unknown as EditTransaction,
       { set: jest.fn(), get: jest.fn(), has: jest.fn().mockReturnValue(false), clear: jest.fn() } as unknown as ConfirmationManager,
+      { isAdmin: jest.fn().mockReturnValue(false), isAdminCommand: jest.fn().mockReturnValue(false), handle: jest.fn(), notifyNewUser: jest.fn() } as unknown as AdminBotHandler,
     );
 
     botService.onModuleInit();

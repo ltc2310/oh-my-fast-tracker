@@ -11,6 +11,7 @@ import { CompareReportController } from "./controllers/compare-report.controller
 import { AdminUserController } from "./controllers/admin-user.controller";
 import { AdminSecretGuard } from "./guards/admin-secret.guard";
 import { BotService } from "../channels/bot.service";
+import { AdminBotHandler } from "../channels/AdminBotHandler";
 
 @Module({
   imports: [
@@ -20,6 +21,6 @@ import { BotService } from "../channels/bot.service";
     InfrastructureModule,
   ],
   controllers: [HealthController, ReportController, ExportController, TrendReportController, CompareReportController, AdminUserController],
-  providers: [BotService, AdminSecretGuard],
+  providers: [BotService, AdminBotHandler, AdminSecretGuard],
 })
 export class HttpModule {}

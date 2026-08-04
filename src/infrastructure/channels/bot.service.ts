@@ -1,9 +1,14 @@
 import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
-import { ChannelAdapter } from "../../domain/ports/ChannelAdapter";
+import { ChannelAdapter, InlineButton, CallbackQuery } from "../../domain/ports/ChannelAdapter";
 import { MultimodalParser } from "../../domain/ports/MultimodalParser";
 import { ParsedExpense } from "../../domain/ports/Parser";
 import { RecordTransaction } from "../../application/usecases/RecordTransaction";
+import { ListTransactions } from "../../application/usecases/ListTransactions";
+import { SetBudgetLimit } from "../../application/usecases/SetBudgetLimit";
+import { GetBudgetStatus } from "../../application/usecases/GetBudgetStatus";
+import { CheckBudgetAfterRecord, BudgetWarning } from "../../application/usecases/CheckBudgetAfterRecord";
+import { DeleteBudgetLimit } from "../../application/usecases/DeleteBudgetLimit";
 import { GenerateWeeklyReport, DateRange } from "../../application/usecases/GenerateWeeklyReport";
 import { GenerateTrendReport } from "../../application/usecases/GenerateTrendReport";
 import { CompareMonths, SameMonthError, InvalidMonthError } from "../../application/usecases/CompareMonths";
@@ -16,6 +21,7 @@ import { EditIntentDetector, EditIntentResult } from "../../domain/ports/EditInt
 import { TransactionRepository } from "../../domain/ports/TransactionRepository";
 import { NotificationPreferenceRepository } from "../../domain/ports/NotificationPreferenceRepository";
 import { appConfig } from "../config/app.config";
+import { AdminBotHandler } from "./AdminBotHandler";
 import { detectCategory, expandAbbreviations, normalizeSpelling, extractAmount } from "../parsers/RegexParser";
 import { isIncomeCategory } from "../../domain/constants/income-categories";
 import { Transaction } from "../../domain/entities/Transaction";
@@ -69,12 +75,18 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 🎤 Voice & Ảnh:
 • Gửi tin nhắn thoại mô tả chi tiêu
 • Gửi ảnh chuyển khoản ngân hàng
-• "ok" — xác nhận lưu
-• "đổi danh mục [tên]" — đổi danh mục
-• "đổi số tiền [số]" — đổi số tiền
-• "bỏ" — huỷ không lưu
+• Nhấn nút "✅ Lưu" hoặc gõ "ok"
+• Nhấn "📁 Đổi danh mục" để chọn
+• Nhấn "💰 Đổi số tiền" rồi gõ số mới
+• Nhấn "❌ Huỷ" hoặc gõ "bỏ"
 
-📊 Xem báo cáo:
+📋 Xem chi tiêu:
+• hôm nay chi gì (chi tiết hôm nay)
+• hôm qua chi gì
+• 5 khoản gần nhất
+• lịch sử 10
+
+📊 Báo cáo tổng hợp:
 • báo cáo (7 ngày gần nhất)
 • chi tiêu tháng này
 • chi tiêu tháng trước
@@ -84,11 +96,21 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • so sánh tháng X với tháng Y
 
 ✏️ Sửa / Xoá:
+• Nhấn nút [✏️ Sửa] sau khi ghi → chọn sửa gì
+• Nhấn nút [🗑 Xoá] sau khi ghi → xoá ngay
 • xoá (xoá khoản vừa ghi)
+• xoá khoản cà phê (tìm & xoá theo keyword)
+• xoá khoản grab hôm qua
 • sửa thành 30k (sửa số tiền)
 • sửa thành ăn uống (đổi danh mục)
 • sửa ngày hôm qua (đổi ngày)
 • sửa thành cà phê 25k hôm qua (kết hợp)
+
+💰 Định mức ngân sách:
+• định mức ăn uống 5tr (đặt giới hạn/tháng)
+• định mức di chuyển 2tr
+• xem định mức (xem % sử dụng)
+• xoá định mức ăn uống
 
 🔔 Thông báo:
 • bật/tắt nhắc nhở (nhắc ghi chi tiêu)
@@ -110,8 +132,21 @@ const COMPARE_MONTHS_REGEX = /so\s*sánh\s*tháng(?:\s+(\d{1,2})\s*(?:với|và|
 /** Regex to detect existing weekly/monthly report request messages */
 const REPORT_REGEX = /báo\s*cáo|chi\s*tiêu\s*(tuần|tháng|ngày|\d)|report/i;
 
-/** Regex to detect undo/delete last transaction */
+/** Regex to detect undo/delete last transaction (bare command, no keyword) */
 const UNDO_REGEX = /^(xo[áa]|xóa|huỷ|hủy|undo|bỏ)\s*(khoản\s*)?(vừa\s*rồi|cuối|gần\s*nhất|mới\s*nhất|lần\s*trước)?$/i;
+
+/** Regex to detect targeted delete: "xoá khoản <keyword> [date_ref]" */
+const UNDO_KEYWORD_REGEX = /^(?:xo[áa]|xóa|huỷ|hủy)\s*khoản\s+(.+?)(?:\s+(?:hôm\s*qua|hôm\s*kia|\d+\s*ngày\s*trước))?$/i;
+
+/** Regex to detect list transaction requests */
+const LIST_TODAY_REGEX = /^(hôm\s*nay|today)(\s*(chi\s*gì|chi\s*tiêu))?$/i;
+const LIST_YESTERDAY_REGEX = /^(hôm\s*qua)(\s*(chi\s*gì|chi\s*tiêu))?$/i;
+const LIST_RECENT_REGEX = /^(?:(\d+)\s*khoản\s*(?:gần\s*nhất|gần\s*đây)|lịch\s*sử\s*(\d+)|xem\s*(\d+)\s*khoản)$/i;
+
+/** Budget command patterns */
+const SET_BUDGET_REGEX = /^(?:định\s*mức|budget)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*(k|nghìn|ngàn|tr|triệu)$/i;
+const VIEW_BUDGET_REGEX = /^(?:xem\s*định\s*mức|xem\s*budget|định\s*mức)$/i;
+const DELETE_BUDGET_REGEX = /^(?:xoá|xóa|bỏ)\s*định\s*mức\s+(.+)$/i;
 
 /** Notification preference command patterns */
 const NOTIFICATION_ENABLE_DAILY = /^(bật\s*(nhắc\s*nhở|thông\s*báo\s*hàng\s*ngày))$/i;
@@ -218,6 +253,11 @@ export class BotService implements OnModuleInit {
     @Inject("NotificationPreferenceRepository") private readonly notificationPreferenceRepository: NotificationPreferenceRepository,
     @Inject("MultimodalParser") private readonly multimodalParser: MultimodalParser,
     private readonly recordTransaction: RecordTransaction,
+    private readonly listTransactions: ListTransactions,
+    private readonly setBudgetLimit: SetBudgetLimit,
+    private readonly getBudgetStatus: GetBudgetStatus,
+    private readonly checkBudgetAfterRecord: CheckBudgetAfterRecord,
+    private readonly deleteBudgetLimit: DeleteBudgetLimit,
     private readonly generateWeeklyReport: GenerateWeeklyReport,
     private readonly generateTrendReport: GenerateTrendReport,
     private readonly compareMonths: CompareMonths,
@@ -225,6 +265,7 @@ export class BotService implements OnModuleInit {
     private readonly undoLastTransaction: UndoLastTransaction,
     private readonly editTransaction: EditTransaction,
     private readonly confirmationManager: ConfirmationManager,
+    private readonly adminBotHandler: AdminBotHandler,
   ) { }
 
   onModuleInit() {
@@ -242,6 +283,12 @@ export class BotService implements OnModuleInit {
         return;
       }
 
+      // Admin commands — route before access check so admins don't need to be whitelisted
+      if (this.adminBotHandler.isAdmin(message.userId) && this.adminBotHandler.isAdminCommand(message.text)) {
+        await this.adminBotHandler.handle(message.userId, message.text);
+        return;
+      }
+
       // Access check
       let internalUserId: string | undefined;
       try {
@@ -254,6 +301,10 @@ export class BotService implements OnModuleInit {
         if (!accessResult.allowed) {
           if (accessResult.isFirstMessage) {
             await this.channelAdapter.sendText(message.userId, WELCOME_MSG);
+            // Notify admins about new user registration (fire-and-forget)
+            this.adminBotHandler.notifyNewUser(accessResult.user).catch((err) => {
+              this.logger.warn(`Failed to notify admins of new user: ${err instanceof Error ? err.message : String(err)}`);
+            });
           } else {
             await this.channelAdapter.sendText(message.userId, PENDING_MSG);
           }
@@ -331,10 +382,49 @@ export class BotService implements OnModuleInit {
         }
       }
 
+      // Budget commands
+      const setBudgetMatch = trimmedText.match(SET_BUDGET_REGEX);
+      if (setBudgetMatch) {
+        await this.handleSetBudget(message.userId, internalUserId!, setBudgetMatch);
+        return;
+      }
+      if (VIEW_BUDGET_REGEX.test(trimmedText)) {
+        await this.handleViewBudget(message.userId, internalUserId!);
+        return;
+      }
+      const deleteBudgetMatch = trimmedText.match(DELETE_BUDGET_REGEX);
+      if (deleteBudgetMatch) {
+        await this.handleDeleteBudget(message.userId, internalUserId!, deleteBudgetMatch[1].trim());
+        return;
+      }
+
+      // List transactions (must be checked BEFORE REPORT_REGEX to avoid "chi tiêu hôm nay" going to report)
+      if (LIST_TODAY_REGEX.test(trimmedText)) {
+        await this.handleListTransactions(message.userId, internalUserId!, { period: "today" });
+        return;
+      }
+      if (LIST_YESTERDAY_REGEX.test(trimmedText)) {
+        await this.handleListTransactions(message.userId, internalUserId!, { period: "yesterday" });
+        return;
+      }
+      const listRecentMatch = trimmedText.match(LIST_RECENT_REGEX);
+      if (listRecentMatch) {
+        const n = parseInt(listRecentMatch[1] || listRecentMatch[2] || listRecentMatch[3], 10);
+        await this.handleListTransactions(message.userId, internalUserId!, { limit: Math.min(n, 10) });
+        return;
+      }
+
       // Check compare months pattern
       const compareMatch = message.text.match(COMPARE_MONTHS_REGEX);
       if (compareMatch) {
         await this.handleCompareMonths(message.userId, internalUserId!, message.text);
+        return;
+      }
+
+      // Targeted delete: "xoá khoản cà phê hôm qua" (must be checked BEFORE bare UNDO_REGEX)
+      const undoKeywordMatch = trimmedText.match(UNDO_KEYWORD_REGEX);
+      if (undoKeywordMatch) {
+        await this.handleUndoByKeyword(message.userId, internalUserId!, undoKeywordMatch[1].trim());
         return;
       }
 
@@ -388,10 +478,28 @@ export class BotService implements OnModuleInit {
         const prefix = formatSpentPrefix(t.spentAt);
         const displayAmount = Math.abs(t.amount).toLocaleString("vi-VN");
         const verb = t.amount < 0 ? "ghi nhận thu" : "ghi nhận";
-        await this.channelAdapter.sendText(
-          message.userId,
-          `Em đã ${verb} ${prefix}${displayAmount}đ - ${t.category}`
-        );
+        let reply = `Em đã ${verb} ${prefix}${displayAmount}đ - ${t.category}`;
+
+        // Check budget warning (only for expenses)
+        if (t.amount > 0) {
+          const warning = await this.checkBudgetAfterRecord.execute(internalUserId!, t.category);
+          if (warning) {
+            reply += this.formatBudgetWarning(warning);
+          }
+        }
+
+        // Send with inline edit/delete buttons if supported
+        if (this.channelAdapter.sendTextWithKeyboard && t.id) {
+          const keyboard = [
+            [
+              { text: "✏️ Sửa", callbackData: `edit:${t.id}` },
+              { text: "🗑 Xoá", callbackData: `del:${t.id}` },
+            ],
+          ];
+          await this.channelAdapter.sendTextWithKeyboard(message.userId, reply, keyboard);
+        } else {
+          await this.channelAdapter.sendText(message.userId, reply);
+        }
         return;
       }
 
@@ -420,6 +528,187 @@ export class BotService implements OnModuleInit {
         }
       }
     });
+
+    // Register inline keyboard callback handler
+    if (this.channelAdapter.onCallbackQuery) {
+      this.channelAdapter.onCallbackQuery(async (query: CallbackQuery) => {
+        await this.handleCallbackQuery(query);
+      });
+    }
+  }
+
+  private async handleSetBudget(channelUserId: string, internalUserId: string, match: RegExpMatchArray): Promise<void> {
+    const rawCategory = match[1].trim();
+    const rawNumber = match[2];
+    const unit = match[3];
+
+    // Resolve category
+    const lowered = rawCategory.toLowerCase();
+    const expanded = expandAbbreviations(lowered);
+    const normalized = normalizeSpelling(expanded);
+    const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+
+    if (!resolvedCategory) {
+      await this.channelAdapter.sendText(channelUserId,
+        `Em chưa nhận ra danh mục "${rawCategory}". Sếp chọn một trong các danh mục:\n\n` +
+        `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
+        `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Khác`
+      );
+      return;
+    }
+
+    // Parse amount
+    const value = parseFloat(rawNumber.replace(",", "."));
+    const u = unit.toLowerCase();
+    let amount: number;
+    if (u === "k" || u.startsWith("ngh") || u.startsWith("ngà")) {
+      amount = value * 1000;
+    } else {
+      amount = value * 1_000_000;
+    }
+
+    await this.setBudgetLimit.execute(internalUserId, resolvedCategory, amount);
+    await this.channelAdapter.sendText(channelUserId,
+      `✅ Đã đặt định mức ${resolvedCategory}: ${amount.toLocaleString("vi-VN")}đ/tháng`
+    );
+  }
+
+  private async handleViewBudget(channelUserId: string, internalUserId: string): Promise<void> {
+    const status = await this.getBudgetStatus.execute(internalUserId);
+
+    if (status.statuses.length === 0) {
+      await this.channelAdapter.sendText(channelUserId,
+        "Sếp chưa đặt định mức nào. Gõ \"định mức ăn uống 5tr\" để bắt đầu."
+      );
+      return;
+    }
+
+    const now = new Date();
+    const monthLabel = `${now.getMonth() + 1}/${now.getFullYear()}`;
+    const lines: string[] = [`📊 Định mức tháng ${monthLabel}:\n`];
+
+    for (const s of status.statuses) {
+      const spentStr = s.spent.toLocaleString("vi-VN");
+      const limitStr = s.monthlyLimit.toLocaleString("vi-VN");
+      const pctStr = Math.round(s.percentage);
+      let icon: string;
+      if (s.level === "exceeded") icon = "🚨";
+      else if (s.level === "warning") icon = "⚠️";
+      else icon = "✅";
+      lines.push(`• ${s.category}: ${spentStr}đ / ${limitStr}đ (${pctStr}%) ${icon}`);
+    }
+
+    lines.push("");
+    const totalSpentStr = status.totalSpent.toLocaleString("vi-VN");
+    const totalLimitStr = status.totalLimit.toLocaleString("vi-VN");
+    const totalPct = status.totalLimit > 0 ? Math.round((status.totalSpent / status.totalLimit) * 100) : 0;
+    lines.push(`Tổng chi: ${totalSpentStr}đ / ${totalLimitStr}đ (${totalPct}%)`);
+
+    await this.channelAdapter.sendText(channelUserId, lines.join("\n"));
+  }
+
+  private async handleDeleteBudget(channelUserId: string, internalUserId: string, rawCategory: string): Promise<void> {
+    const lowered = rawCategory.toLowerCase();
+    const expanded = expandAbbreviations(lowered);
+    const normalized = normalizeSpelling(expanded);
+    const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+
+    if (!resolvedCategory) {
+      await this.channelAdapter.sendText(channelUserId, `Em chưa nhận ra danh mục "${rawCategory}".`);
+      return;
+    }
+
+    const deleted = await this.deleteBudgetLimit.execute(internalUserId, resolvedCategory);
+    if (deleted) {
+      await this.channelAdapter.sendText(channelUserId, `✅ Đã xoá định mức ${resolvedCategory}`);
+    } else {
+      await this.channelAdapter.sendText(channelUserId, `Không tìm thấy định mức cho ${resolvedCategory}.`);
+    }
+  }
+
+  private formatBudgetWarning(warning: BudgetWarning): string {
+    const spentStr = warning.spent.toLocaleString("vi-VN");
+    const limitStr = warning.limit.toLocaleString("vi-VN");
+    const pctStr = Math.round(warning.percentage);
+
+    if (warning.level === "exceeded") {
+      return ` 🚨 Vượt định mức! (đã chi ${spentStr}đ / ${limitStr}đ)`;
+    }
+    return ` ⚠️ (đã dùng ${pctStr}% định mức tháng này)`;
+  }
+
+  private async handleListTransactions(
+    channelUserId: string,
+    internalUserId: string,
+    options: { period?: "today" | "yesterday"; limit?: number },
+  ): Promise<void> {
+    const now = new Date();
+    let from: Date | undefined;
+    let to: Date | undefined;
+    let periodLabel: string;
+
+    if (options.period === "today") {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      to = now;
+      periodLabel = `hôm nay (${formatDate(from)})`;
+    } else if (options.period === "yesterday") {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      from = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0);
+      to = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999);
+      periodLabel = `hôm qua (${formatDate(from)})`;
+    } else {
+      periodLabel = `${options.limit} khoản gần nhất`;
+    }
+
+    const result = await this.listTransactions.execute(internalUserId, {
+      from,
+      to,
+      limit: options.limit,
+    });
+
+    if (result.transactions.length === 0) {
+      const emptyMsg = options.period
+        ? `${options.period === "today" ? "Hôm nay" : "Hôm qua"} sếp chưa chi gì 🎉`
+        : "Không tìm thấy khoản nào.";
+      await this.channelAdapter.sendText(channelUserId, emptyMsg);
+      return;
+    }
+
+    const lines: string[] = [];
+    lines.push(`📋 Chi tiêu ${periodLabel}:\n`);
+
+    for (let i = 0; i < result.transactions.length; i++) {
+      const t = result.transactions[i];
+      const displayAmount = Math.abs(t.amount).toLocaleString("vi-VN");
+      const sign = t.amount < 0 ? "+" : "";
+      const timeStr = this.formatTransactionTime(t.spentAt, now);
+      lines.push(`${i + 1}. ${sign}${displayAmount}đ - ${t.category} (${t.note}) — ${timeStr}`);
+    }
+
+    lines.push("");
+    if (result.total > 0) {
+      lines.push(`💰 Tổng chi: ${result.total.toLocaleString("vi-VN")}đ`);
+    }
+    if (result.totalIncome > 0) {
+      lines.push(`💵 Tổng thu: ${result.totalIncome.toLocaleString("vi-VN")}đ`);
+    }
+    lines.push(`📝 ${result.transactions.length} khoản${result.hasMore ? " (còn nữa, mở web để xem đầy đủ)" : ""}`);
+
+    await this.channelAdapter.sendText(channelUserId, lines.join("\n"));
+  }
+
+  private formatTransactionTime(spentAt: Date | undefined, now: Date): string {
+    if (!spentAt) return "";
+    const sameDay =
+      spentAt.getFullYear() === now.getFullYear() &&
+      spentAt.getMonth() === now.getMonth() &&
+      spentAt.getDate() === now.getDate();
+
+    if (sameDay) {
+      return `${spentAt.getHours()}:${String(spentAt.getMinutes()).padStart(2, "0")}`;
+    }
+    return `${spentAt.getDate()}/${spentAt.getMonth() + 1} ${spentAt.getHours()}:${String(spentAt.getMinutes()).padStart(2, "0")}`;
   }
 
   private async handleReportRequest(channelUserId: string, internalUserId: string, text: string): Promise<void> {
@@ -540,6 +829,77 @@ export class BotService implements OnModuleInit {
       channelUserId,
       `Đã xoá khoản ${displayAmount}đ - ${deleted.category} (${deleted.note}).`
     );
+  }
+
+  private async handleUndoByKeyword(channelUserId: string, internalUserId: string, keyword: string): Promise<void> {
+    const candidates = await this.transactionRepository.findByUserAndKeyword(internalUserId, keyword, 5);
+
+    if (candidates.length === 0) {
+      await this.channelAdapter.sendText(
+        channelUserId,
+        `Không tìm thấy khoản nào khớp "${keyword}".`,
+      );
+      return;
+    }
+
+    if (candidates.length === 1) {
+      // Single match — delete directly with confirmation keyboard
+      const tx = candidates[0];
+      const displayAmount = Math.abs(tx.amount).toLocaleString("vi-VN");
+      const dateStr = tx.spentAt
+        ? `${tx.spentAt.getDate()}/${tx.spentAt.getMonth() + 1}`
+        : "";
+
+      if (this.channelAdapter.sendTextWithKeyboard) {
+        const text = `Tìm thấy: ${displayAmount}đ - ${tx.category} (${tx.note}) ${dateStr}. Xoá khoản này?`;
+        const keyboard = [
+          [
+            { text: "✅ Xoá", callbackData: `del:${tx.id}` },
+            { text: "❌ Không", callbackData: "del:cancel" },
+          ],
+        ];
+        await this.channelAdapter.sendTextWithKeyboard(channelUserId, text, keyboard);
+      } else {
+        // Fallback — delete immediately
+        await this.transactionRepository.deleteById(tx.id!);
+        await this.channelAdapter.sendText(
+          channelUserId,
+          `Đã xoá khoản ${displayAmount}đ - ${tx.category} (${tx.note}).`,
+        );
+      }
+      return;
+    }
+
+    // Multiple matches — show list with selection keyboard
+    const lines: string[] = [`Tìm thấy ${candidates.length} khoản khớp "${keyword}":\n`];
+    const keyboard: { text: string; callbackData: string }[][] = [];
+
+    for (let i = 0; i < candidates.length; i++) {
+      const tx = candidates[i];
+      const displayAmount = Math.abs(tx.amount).toLocaleString("vi-VN");
+      const dateStr = tx.spentAt
+        ? `${tx.spentAt.getDate()}/${tx.spentAt.getMonth() + 1}`
+        : "";
+      lines.push(`${i + 1}. ${displayAmount}đ - ${tx.category} (${tx.note}) — ${dateStr}`);
+    }
+    lines.push("\nChọn khoản cần xoá:");
+
+    // Build keyboard rows of 3 buttons
+    const row: { text: string; callbackData: string }[] = [];
+    for (let i = 0; i < candidates.length; i++) {
+      row.push({ text: `${i + 1}`, callbackData: `del:${candidates[i].id}` });
+      if (row.length === 3 || i === candidates.length - 1) {
+        keyboard.push([...row]);
+        row.length = 0;
+      }
+    }
+    keyboard.push([{ text: "❌ Huỷ", callbackData: "del:cancel" }]);
+
+    if (this.channelAdapter.sendTextWithKeyboard) {
+      await this.channelAdapter.sendTextWithKeyboard(channelUserId, lines.join("\n"), keyboard);
+    } else {
+      await this.channelAdapter.sendText(channelUserId, lines.join("\n") + "\n\nGõ số thứ tự để xoá.");
+    }
   }
 
   private async handleEditIntent(channelUserId: string, internalUserId: string, result: EditIntentResult): Promise<void> {
@@ -838,8 +1198,7 @@ export class BotService implements OnModuleInit {
       }
 
       this.confirmationManager.set(internalUserId, channelUserId, expenses, "voice");
-      const confirmMsg = this.formatConfirmationMessage(expenses, "voice");
-      await this.channelAdapter.sendText(channelUserId, confirmMsg);
+      await this.sendConfirmation(channelUserId, expenses, "voice");
     } catch (error: any) {
       this.logger.error(`[Voice] Parse failed for user=${internalUserId}`, error?.message);
       if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
@@ -877,8 +1236,7 @@ export class BotService implements OnModuleInit {
       }
 
       this.confirmationManager.set(internalUserId, channelUserId, expenses, "photo");
-      const confirmMsg = this.formatConfirmationMessage(expenses, "photo");
-      await this.channelAdapter.sendText(channelUserId, confirmMsg);
+      await this.sendConfirmation(channelUserId, expenses, "photo");
     } catch (error: any) {
       this.logger.error(`[Photo] Parse failed for user=${internalUserId}`, error?.message);
       if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
@@ -1046,11 +1404,6 @@ export class BotService implements OnModuleInit {
         `💰 Số tiền: ${formattedAmount}đ`,
         `📁 Danh mục: ${expense.category}`,
         `📝 Ghi chú: ${expense.note}`,
-        "",
-        `• "ok" — lưu`,
-        `• "đổi danh mục [tên]" — đổi danh mục`,
-        `• "đổi số tiền [số]" — đổi số tiền`,
-        `• "bỏ" — huỷ`,
       ].join("\n");
     }
 
@@ -1063,10 +1416,341 @@ export class BotService implements OnModuleInit {
     return [
       `${icon} Em nhận được ${expenses.length} khoản:`,
       ...expenseLines,
-      "",
-      `• "ok" — lưu tất cả`,
-      `• "bỏ" — huỷ`,
     ].join("\n");
+  }
+
+  /** Build inline keyboard for confirmation flow. */
+  private buildConfirmationKeyboard(expenses: ParsedExpense[]): InlineButton[][] {
+    if (expenses.length === 1) {
+      return [
+        [
+          { text: "✅ Lưu", callbackData: "confirm:save" },
+          { text: "📁 Đổi danh mục", callbackData: "confirm:cat" },
+          { text: "💰 Đổi số tiền", callbackData: "confirm:amt" },
+          { text: "❌ Huỷ", callbackData: "confirm:cancel" },
+        ],
+      ];
+    }
+    return [
+      [
+        { text: "✅ Lưu tất cả", callbackData: "confirm:save" },
+        { text: "❌ Huỷ", callbackData: "confirm:cancel" },
+      ],
+    ];
+  }
+
+  /** Send confirmation message with inline keyboard (falls back to text-only if keyboard not supported). */
+  private async sendConfirmation(channelUserId: string, expenses: ParsedExpense[], source: "voice" | "photo"): Promise<void> {
+    const text = this.formatConfirmationMessage(expenses, source);
+    const keyboard = this.buildConfirmationKeyboard(expenses);
+
+    if (this.channelAdapter.sendTextWithKeyboard) {
+      await this.channelAdapter.sendTextWithKeyboard(channelUserId, text, keyboard);
+    } else {
+      // Fallback: append text instructions
+      const instructions = expenses.length === 1
+        ? `\n\n• "ok" — lưu\n• "đổi danh mục [tên]" — đổi danh mục\n• "đổi số tiền [số]" — đổi số tiền\n• "bỏ" — huỷ`
+        : `\n\n• "ok" — lưu tất cả\n• "bỏ" — huỷ`;
+      await this.channelAdapter.sendText(channelUserId, text + instructions);
+    }
+  }
+
+  /** Handle inline keyboard callback queries. */
+  private async handleCallbackQuery(query: CallbackQuery): Promise<void> {
+    const { userId, data, id: callbackId, chatId, messageId } = query;
+
+    // Find internal user ID for this channel user
+    // (callback queries come from whitelisted users who already have pending confirmations)
+    const pendingEntries = Array.from(this.findPendingByChannelUserId(userId));
+    if (pendingEntries.length === 0) {
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId, "Đã hết hạn, sếp gửi lại nhé");
+      }
+      return;
+    }
+
+    const [internalUserId, pending] = pendingEntries[0];
+
+    if (data === "confirm:save") {
+      // Save all pending expenses
+      for (const expense of pending.expenses) {
+        const amount = isIncomeCategory(expense.category)
+          ? -Math.abs(expense.amount)
+          : Math.abs(expense.amount);
+
+        const transaction: Transaction = {
+          userId: internalUserId,
+          amount,
+          category: expense.category,
+          note: expense.note,
+          spentAt: expense.date ?? new Date(),
+        };
+        await this.transactionRepository.save(transaction);
+      }
+
+      this.confirmationManager.clear(internalUserId);
+
+      // Edit message to show saved confirmation
+      const savedText = pending.expenses.length === 1
+        ? `✅ Đã ghi nhận ${Math.abs(pending.expenses[0].amount).toLocaleString("vi-VN")}đ - ${pending.expenses[0].category}`
+        : `✅ Đã ghi nhận ${pending.expenses.length} khoản`;
+
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, savedText);
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    if (data === "confirm:cancel") {
+      this.confirmationManager.clear(internalUserId);
+
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, "❌ Đã huỷ, em không lưu khoản này.");
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    if (data === "confirm:cat") {
+      // Show category selection keyboard
+      const categoryKeyboard = this.buildCategoryKeyboard();
+      if (this.channelAdapter.editMessageText) {
+        const text = this.formatConfirmationMessage(pending.expenses, pending.source) + "\n\n📁 Chọn danh mục:";
+        await this.channelAdapter.editMessageText(chatId, messageId, text, categoryKeyboard);
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    if (data === "confirm:amt") {
+      // Ask user to type new amount
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId, "Gõ số tiền mới (VD: 30k)");
+      }
+      return;
+    }
+
+    // Category selection: "cat:<category_name>"
+    if (data.startsWith("cat:")) {
+      const category = data.slice(4);
+      const expense = pending.expenses[0];
+      expense.category = category;
+
+      // Save with new category
+      const amount = isIncomeCategory(expense.category)
+        ? -Math.abs(expense.amount)
+        : Math.abs(expense.amount);
+
+      const transaction: Transaction = {
+        userId: internalUserId,
+        amount,
+        category: expense.category,
+        note: expense.note,
+        spentAt: expense.date ?? new Date(),
+      };
+      await this.transactionRepository.save(transaction);
+      this.confirmationManager.clear(internalUserId);
+
+      const savedText = `✅ Đã ghi nhận ${Math.abs(expense.amount).toLocaleString("vi-VN")}đ - ${category}`;
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, savedText);
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    // Edit transaction: "edit:<transactionId>" — show edit options
+    if (data.startsWith("edit:")) {
+      const txId = data.slice(5);
+      const editKeyboard = [
+        [
+          { text: "💰 Đổi số tiền", callbackData: `editamt:${txId}` },
+          { text: "📁 Đổi danh mục", callbackData: `editcat:${txId}` },
+        ],
+        [
+          { text: "📅 Đổi ngày", callbackData: `editdate:${txId}` },
+          { text: "❌ Huỷ", callbackData: "editcancel" },
+        ],
+      ];
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, "Sếp muốn sửa gì?", editKeyboard);
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    // Edit sub-actions
+    if (data.startsWith("editamt:")) {
+      // Prompt user to type new amount
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId, "Gõ số tiền mới (VD: 30k)");
+      }
+      if (this.channelAdapter.editMessageText) {
+        const txId = data.slice(8);
+        await this.channelAdapter.editMessageText(chatId, messageId, `Gõ số tiền mới cho khoản này (VD: 30k, 1tr).\nDùng lệnh: sửa thành [số tiền]`);
+      }
+      return;
+    }
+
+    if (data.startsWith("editcat:")) {
+      // Show category selection with txId encoded
+      const txId = data.slice(8);
+      const categoryKeyboard = this.buildEditCategoryKeyboard(txId);
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, "Chọn danh mục mới:", categoryKeyboard);
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    if (data.startsWith("editdate:")) {
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId, "Gõ: sửa ngày hôm qua");
+      }
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, `Gõ ngày mới (VD: "sửa ngày hôm qua", "sửa 3 ngày trước")`);
+      }
+      return;
+    }
+
+    if (data === "editcancel") {
+      if (this.channelAdapter.editMessageText) {
+        await this.channelAdapter.editMessageText(chatId, messageId, "Đã huỷ sửa.");
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    // Edit category selection: "ecat:<txId>:<category>"
+    if (data.startsWith("ecat:")) {
+      const parts = data.slice(5);
+      const colonIdx = parts.indexOf(":");
+      if (colonIdx > 0) {
+        const txId = parts.slice(0, colonIdx);
+        const newCategory = parts.slice(colonIdx + 1);
+
+        const updated = await this.editTransaction.execute(userId, txId, { category: newCategory, note: newCategory });
+        if (updated) {
+          const displayAmount = Math.abs(updated.amount).toLocaleString("vi-VN");
+          if (this.channelAdapter.editMessageText) {
+            await this.channelAdapter.editMessageText(chatId, messageId, `✅ Đã sửa thành ${displayAmount}đ - ${newCategory}`);
+          }
+        } else {
+          if (this.channelAdapter.editMessageText) {
+            await this.channelAdapter.editMessageText(chatId, messageId, "❌ Không sửa được, khoản có thể đã bị xoá.");
+          }
+        }
+        if (this.channelAdapter.answerCallbackQuery) {
+          await this.channelAdapter.answerCallbackQuery(callbackId);
+        }
+      }
+      return;
+    }
+
+    // Delete transaction: "del:<transactionId>" or "del:cancel"
+    if (data.startsWith("del:")) {
+      const target = data.slice(4);
+      if (target === "cancel") {
+        if (this.channelAdapter.editMessageText) {
+          await this.channelAdapter.editMessageText(chatId, messageId, "❌ Đã huỷ, không xoá.");
+        }
+        if (this.channelAdapter.answerCallbackQuery) {
+          await this.channelAdapter.answerCallbackQuery(callbackId);
+        }
+        return;
+      }
+
+      // Delete the transaction by ID
+      const deleted = await this.transactionRepository.deleteById(target);
+      if (deleted) {
+        if (this.channelAdapter.editMessageText) {
+          await this.channelAdapter.editMessageText(chatId, messageId, "✅ Đã xoá khoản thành công.");
+        }
+      } else {
+        if (this.channelAdapter.editMessageText) {
+          await this.channelAdapter.editMessageText(chatId, messageId, "❌ Không tìm thấy khoản để xoá (có thể đã bị xoá trước đó).");
+        }
+      }
+      if (this.channelAdapter.answerCallbackQuery) {
+        await this.channelAdapter.answerCallbackQuery(callbackId);
+      }
+      return;
+    }
+
+    // Unknown callback data
+    if (this.channelAdapter.answerCallbackQuery) {
+      await this.channelAdapter.answerCallbackQuery(callbackId);
+    }
+  }
+
+  /** Find pending confirmation by channel user ID (reverse lookup). */
+  private *findPendingByChannelUserId(channelUserId: string): Generator<[string, { expenses: ParsedExpense[]; source: "voice" | "photo" }]> {
+    // ConfirmationManager stores by internalUserId, but callback comes with channelUserId.
+    // We need to check if the pending entry's channelUserId matches.
+    // The ConfirmationManager stores channelUserId in the PendingConfirmation.
+    const allPending = this.confirmationManager as unknown as { pending: Map<string, { channelUserId: string; expenses: ParsedExpense[]; source: "voice" | "photo" }> };
+    if (!allPending.pending) return;
+    for (const [internalId, entry] of allPending.pending) {
+      if (entry.channelUserId === channelUserId) {
+        yield [internalId, entry];
+      }
+    }
+  }
+
+  /** Build inline keyboard with all 14 categories in rows of 3. */
+  private buildCategoryKeyboard(): InlineButton[][] {
+    const categories = [
+      "Ăn uống", "Di chuyển", "Mua sắm", "Nhà ở",
+      "Tiện ích", "Internet", "Sức khỏe", "Giáo dục",
+      "Giải trí", "Con cái", "Chi phí cố định", "Thu nhập",
+      "Tiết kiệm & Đầu tư", "Khác",
+    ];
+
+    const keyboard: InlineButton[][] = [];
+    for (let i = 0; i < categories.length; i += 3) {
+      const row = categories.slice(i, i + 3).map((cat) => ({
+        text: cat,
+        callbackData: `cat:${cat}`,
+      }));
+      keyboard.push(row);
+    }
+    return keyboard;
+  }
+
+  /** Build inline keyboard for editing a specific transaction's category. */
+  private buildEditCategoryKeyboard(txId: string): InlineButton[][] {
+    const categories = [
+      "Ăn uống", "Di chuyển", "Mua sắm", "Nhà ở",
+      "Tiện ích", "Internet", "Sức khỏe", "Giáo dục",
+      "Giải trí", "Con cái", "Chi phí cố định", "Thu nhập",
+      "Tiết kiệm & Đầu tư", "Khác",
+    ];
+
+    const keyboard: InlineButton[][] = [];
+    for (let i = 0; i < categories.length; i += 3) {
+      const row = categories.slice(i, i + 3).map((cat) => ({
+        text: cat,
+        callbackData: `ecat:${txId}:${cat}`,
+      }));
+      keyboard.push(row);
+    }
+    keyboard.push([{ text: "❌ Huỷ", callbackData: "editcancel" }]);
+    return keyboard;
   }
 
   private getMonthDateRange(year: number, month: number): { from: Date; to: Date } {
