@@ -82,6 +82,123 @@ const CATEGORY_KEYWORDS: [string, string[]][] = [
   ]],
 ];
 
+/**
+ * Well-known Vietnamese brand / chain names mapped to their category.
+ *
+ * Why a separate table from CATEGORY_KEYWORDS:
+ *   1. Brand names are matched against the RAW text, before spelling
+ *      normalization. `normalizeSpelling` rewrites word-initial f→ph, z→gi,
+ *      w→qu, which would mangle "fpt" → "phpt", "zara" → "giara",
+ *      "watsons" → "quatsons".
+ *   2. Brands are high-confidence signals, so on an equal-length match they
+ *      should win over generic keywords.
+ *
+ * Matching is longest-match-wins across BOTH tables, so more specific entries
+ * beat shorter ones: "lotte cinema" (Giải trí) beats "lotte" (Ăn uống), and
+ * "grabfood" (Ăn uống) beats the "grab" keyword (Di chuyển).
+ *
+ * All entries MUST be lowercase.
+ */
+const BRAND_KEYWORDS: [string, string[]][] = [
+  ["Ăn uống", [
+    // Fast food
+    "kfc", "lotteria", "mcdonald's", "mcdonald", "jollibee", "burger king",
+    "popeyes", "texas chicken", "domino's pizza", "dominos", "pizza hut",
+    "the pizza company", "pizza 4p's", "pizza 4ps", "al fresco's",
+    // Coffee & tea chains
+    "highlands coffee", "highlands", "phúc long", "phuc long", "starbucks",
+    "the coffee house", "trung nguyên", "trung nguyen", "cộng cà phê",
+    "cong ca phe", "katinat", "passio", "aha cafe", "milano coffee",
+    "ông bầu", "ong bau", "phê la", "phe la", "laika", "cheese coffee",
+    // Bubble tea
+    "gong cha", "koi thé", "koi the", "toco toco", "tocotoco", "ding tea",
+    "bobapop", "royaltea", "royal tea", "tiger sugar", "mixue", "chatime",
+    "la boong", "bhud tea", "maycha", "trà sữa nhà làm",
+    // Hotpot & BBQ
+    "haidilao", "hai di lao", "kichi kichi", "kichi", "gogi house", "gogi",
+    "manwah", "sumo bbq", "hutong", "king bbq", "dolpan sam", "seoul garden",
+    "ashima", "lẩu phan", "lau phan", "tasty hotpot", "coca suki",
+    // Restaurant chains
+    "món huế", "mon hue", "wrap & roll", "wrap and roll", "phở 24", "pho 24",
+    "phở thìn", "pho thin", "cơm tấm cali", "bún chả cá", "quán ăn ngon",
+    "golden gate", "yenni", "sushi world", "tokyo deli", "isushi", "gyu shige",
+    "bò tơ quán mộc", "nhà hàng",
+    // Bakery & dessert
+    "tous les jours", "paris baguette", "abc bakery", "đức phát", "duc phat",
+    "breadtalk", "savoure", "baskin robbins", "dairy queen", "fanny",
+    "bud's ice cream", "cheese cake",
+    // Food delivery
+    "grabfood", "grab food", "shopeefood", "shopee food", "baemin", "beamin",
+    "now.vn", "gojek food", "befood", "be food",
+    // Convenience stores
+    "circle k", "circlek", "gs25", "familymart", "family mart", "ministop",
+    "7-eleven", "seven eleven", "b's mart", "bsmart",
+    // Supermarkets & grocery
+    "winmart", "vinmart", "coopmart", "co.opmart", "co op mart", "big c",
+    "lotte mart", "lottemart", "aeon", "mega market", "bách hoá xanh",
+    "bach hoa xanh", "bachhoaxanh", "emart", "tops market", "nam an market",
+    "annam gourmet", "farmers market",
+    // Bare "lotte" is most often Lotteria / Lotte Mart in expense notes.
+    // Kept short so "lotte cinema" (Giải trí) wins on length.
+    "lotte",
+  ]],
+  ["Di chuyển", [
+    "xanh sm", "xanhsm", "be group", "vinasun", "mai linh", "taxi g7",
+    "grabbike", "grab bike", "grabcar", "grab car", "gojek", "vato",
+    "vietjet", "vietnam airlines", "bamboo airways", "pacific airlines",
+    "phương trang", "phuong trang", "futa", "hoàng long", "kumho",
+    "limousine", "petrolimex", "pvoil", "shell", "vé xe khách",
+  ]],
+  ["Mua sắm", [
+    "shopee", "lazada", "tiki", "sendo", "tiktok shop", "tiktokshop",
+    "uniqlo", "zara", "h&m", "mango", "nike", "adidas", "vascara", "juno",
+    "charles & keith", "pedro", "watsons", "guardian", "hasaki", "innisfree",
+    "the face shop", "cocolux", "sociolla", "beauty box",
+    "nguyễn kim", "nguyen kim", "điện máy xanh", "dien may xanh",
+    "fpt shop", "thế giới di động", "the gioi di dong", "cellphones",
+    "hoàng hà mobile", "an phát", "phong vũ", "phong vu",
+  ]],
+  ["Giải trí", [
+    "cgv", "lotte cinema", "galaxy cinema", "bhd star", "beta cinemas",
+    "beta cinema", "disney+", "disney plus", "vieon", "fpt play", "k+",
+    "steam", "epic games", "garena", "vng", "liên quân", "lien quan",
+    "icool", "nice karaoke", "kingdom karaoke", "vinpearl", "sun world",
+    "đầm sen", "dam sen", "suối tiên", "suoi tien", "bà nà hills",
+    "ba na hills", "vinwonders",
+  ]],
+  ["Sức khỏe", [
+    "pharmacity", "long châu", "long chau", "nhà thuốc an khang", "an khang",
+    "vinmec", "hoàn mỹ", "hoan my", "thu cúc", "thu cuc", "fv hospital",
+    "medlatec", "diag", "california fitness", "elite fitness", "curves",
+    "getfit", "25 fit", "citigym",
+  ]],
+  ["Internet", [
+    "viettel", "vinaphone", "mobifone", "vietnamobile", "itel",
+    "fpt telecom", "vnpt", "sctv",
+  ]],
+  ["Giáo dục", [
+    "duolingo", "kyna", "edumall", "topica", "vus", "ila", "apollo english",
+    "british council", "yola", "wall street english", "ielts fighter",
+    "hocmai", "vuihoc",
+  ]],
+  ["Nhà ở", [
+    "nhà xinh", "nha xinh", "baya", "jysk", "ikea", "uma", "index living mall",
+    "an cường", "an cuong",
+  ]],
+  ["Chi phí cố định", [
+    "prudential", "manulife", "aia", "bảo việt", "bao viet", "dai-ichi",
+    "daiichi", "fwd", "generali", "chubb life", "pvi", "pti",
+  ]],
+  ["Tiết kiệm & Đầu tư", [
+    "ssi", "vndirect", "vps", "tcbs", "techcom securities", "mirae asset",
+    "finhay", "tikop", "infina", "fmarket", "binance", "remitano",
+    "dragon capital", "vinacapital",
+  ]],
+];
+
+/** Flattened brand lookup used by the longest-match resolver. */
+const BRAND_TABLE: ReadonlyArray<[string, string[]]> = BRAND_KEYWORDS;
+
 // --- Abbreviation expansion ---
 
 const ABBREVIATION_MAP: Record<string, string> = {
@@ -334,21 +451,75 @@ export function detectDate(text: string): Date | undefined {
   return undefined;
 }
 
-export function detectCategory(text: string): string | null {
-  const lower = text.toLowerCase();
-  let bestCategory: string | null = null;
-  let bestLength = 0;
+/** A category match together with the length of the keyword that produced it. */
+interface CategoryMatch {
+  category: string;
+  length: number;
+}
 
-  for (const [category, keywords] of CATEGORY_KEYWORDS) {
+/**
+ * Longest-match lookup of `text` against a keyword table.
+ * Returns null when nothing matches.
+ */
+function findLongestMatch(
+  text: string,
+  table: ReadonlyArray<[string, string[]]>,
+): CategoryMatch | null {
+  let best: CategoryMatch | null = null;
+
+  for (const [category, keywords] of table) {
     for (const kw of keywords) {
-      if (kw.length > bestLength && lower.includes(kw)) {
-        bestLength = kw.length;
-        bestCategory = category;
+      if (kw.length > (best?.length ?? 0) && text.includes(kw)) {
+        best = { category, length: kw.length };
       }
     }
   }
 
-  return bestCategory;
+  return best;
+}
+
+export function detectCategory(text: string): string | null {
+  return findLongestMatch(text.toLowerCase(), CATEGORY_KEYWORDS)?.category ?? null;
+}
+
+/**
+ * Detect a category from a well-known brand / chain name (KFC, Phúc Long,
+ * Haidilao, ...). Matched against raw text so spelling normalization can't
+ * mangle Latin brand names.
+ */
+export function detectBrand(text: string): string | null {
+  return findLongestMatch(text.toLowerCase(), BRAND_TABLE)?.category ?? null;
+}
+
+/**
+ * Full category resolution pipeline, shared by the parser and the bot layer.
+ *
+ * Runs brand matching on the raw text and keyword matching on the
+ * abbreviation-expanded / spelling-normalized text, then picks the longest
+ * match overall. Brands win ties because they are the more specific signal.
+ *
+ * Returns null when neither a brand nor a keyword matches.
+ */
+export function resolveCategory(text: string): string | null {
+  const lowered = text.toLowerCase();
+  const expanded = expandAbbreviations(lowered);
+  const normalized = normalizeSpelling(expanded);
+
+  const brandMatch =
+    findLongestMatch(lowered, BRAND_TABLE) ??
+    findLongestMatch(normalized, BRAND_TABLE);
+
+  const keywordMatch =
+    findLongestMatch(normalized, CATEGORY_KEYWORDS) ??
+    findLongestMatch(expanded, CATEGORY_KEYWORDS);
+
+  if (!brandMatch) return keywordMatch?.category ?? null;
+  if (!keywordMatch) return brandMatch.category;
+
+  // Ties go to the brand — it is the higher-confidence signal.
+  return brandMatch.length >= keywordMatch.length
+    ? brandMatch.category
+    : keywordMatch.category;
 }
 
 /**
@@ -396,12 +567,8 @@ function parseSingle(text: string, sharedDate?: Date): (ParsedExpense & { confid
   const amount = extractAmount(text);
   if (!amount || amount <= 0) return null;
 
-  const lowered = text.toLowerCase();
-  const expanded = expandAbbreviations(lowered);
-  const normalized = normalizeSpelling(expanded);
-
-  // Keyword matching: normalized first, fall back to expanded (Req 3.5)
-  const keywordCategory = detectCategory(normalized) ?? detectCategory(expanded);
+  // Brand names (raw text) + keywords (normalized text), longest match wins
+  const keywordCategory = resolveCategory(text);
 
   let category: string;
   let confident: boolean;
@@ -462,19 +629,13 @@ function combineAdjacentSegments(segments: string[]): string[] {
   while (i < segments.length) {
     const current = segments[i];
     const currentAmount = extractAmount(current);
-    const currentLowered = current.toLowerCase();
-    const currentExpanded = expandAbbreviations(currentLowered);
-    const currentNormalized = normalizeSpelling(currentExpanded);
-    const currentHasKeyword = detectCategory(currentNormalized) !== null || detectCategory(currentExpanded) !== null;
+    const currentHasKeyword = resolveCategory(current) !== null;
 
     // Keyword-bearing segment with no amount → look ahead
     if (currentHasKeyword && currentAmount === null && i + 1 < segments.length) {
       const next = segments[i + 1];
       const nextAmount = extractAmount(next);
-      const nextLowered = next.toLowerCase();
-      const nextExpanded = expandAbbreviations(nextLowered);
-      const nextNormalized = normalizeSpelling(nextExpanded);
-      const nextHasKeyword = detectCategory(nextNormalized) !== null || detectCategory(nextExpanded) !== null;
+      const nextHasKeyword = resolveCategory(next) !== null;
 
       // Next segment has amount, no keyword of its own, and has a connector verb
       if (nextAmount !== null && !nextHasKeyword && hasConnectorVerb(next)) {

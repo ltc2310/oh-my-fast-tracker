@@ -24,8 +24,9 @@ import { TransactionRepository } from "../../domain/ports/TransactionRepository"
 import { NotificationPreferenceRepository } from "../../domain/ports/NotificationPreferenceRepository";
 import { appConfig } from "../config/app.config";
 import { AdminBotHandler } from "./AdminBotHandler";
-import { detectCategory, expandAbbreviations, normalizeSpelling, extractAmount, detectDate } from "../parsers/RegexParser";
+import { resolveCategory, extractAmount, detectDate } from "../parsers/RegexParser";
 import { isIncomeCategory } from "../../domain/constants/income-categories";
+import { CATEGORIES } from "../../domain/constants/categories";
 import { Transaction } from "../../domain/entities/Transaction";
 
 /** Access control messages (Vietnamese) */
@@ -73,6 +74,12 @@ const HELP_MSG = `📖 Hướng dẫn sử dụng
 • ăn sáng 70k, rửa xe 30k (nhiều khoản)
 • cf 30k (viết tắt: cà phê)
 • lương 20tr (thu nhập)
+
+🏪 Gõ tên thương hiệu là em tự hiểu:
+• kfc 120k, phúc long 65k, haidilao 800k
+• circle k 45k, bách hoá xanh 250k
+• xanh sm 45k, shopee 350k, cgv 120k
+• pharmacity 95k, viettel 200k
 
 🎤 Voice & Ảnh:
 • Gửi tin nhắn thoại mô tả chi tiêu
@@ -229,6 +236,11 @@ function parseReportDateRange(text: string): DateRange {
 
 function formatDate(d: Date): string {
   return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+/** Whether a parser error message indicates the model returned malformed JSON. */
+function isInvalidJsonError(message: string): boolean {
+  return /invalid json/i.test(message);
 }
 
 /**
@@ -562,16 +574,12 @@ export class BotService implements OnModuleInit {
     const unit = match[3];
 
     // Resolve category
-    const lowered = rawCategory.toLowerCase();
-    const expanded = expandAbbreviations(lowered);
-    const normalized = normalizeSpelling(expanded);
-    const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+    const resolvedCategory = resolveCategory(rawCategory);
 
     if (!resolvedCategory) {
       await this.channelAdapter.sendText(channelUserId,
         `Em chưa nhận ra danh mục "${rawCategory}". Sếp chọn một trong các danh mục:\n\n` +
-        `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
-        `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, Khác`
+        CATEGORIES.join(", ")
       );
       return;
     }
@@ -639,10 +647,7 @@ export class BotService implements OnModuleInit {
   }
 
   private async handleDeleteBudget(channelUserId: string, internalUserId: string, rawCategory: string): Promise<void> {
-    const lowered = rawCategory.toLowerCase();
-    const expanded = expandAbbreviations(lowered);
-    const normalized = normalizeSpelling(expanded);
-    const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+    const resolvedCategory = resolveCategory(rawCategory);
 
     if (!resolvedCategory) {
       await this.channelAdapter.sendText(channelUserId, `Em chưa nhận ra danh mục "${rawCategory}".`);
@@ -1045,17 +1050,12 @@ export class BotService implements OnModuleInit {
 
     if (result.fields.category) {
       // Chạy Category_Detector pipeline
-      const lowered = result.fields.category.toLowerCase();
-      const expanded = expandAbbreviations(lowered);
-      const normalized = normalizeSpelling(expanded);
-      const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+      const resolvedCategory = resolveCategory(result.fields.category);
 
       if (!resolvedCategory) {
         await this.channelAdapter.sendText(channelUserId,
           `Em chưa nhận ra danh mục "${result.fields.category}". Sếp chọn một trong các danh mục:\n\n` +
-          `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
-          `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, ` +
-          `Tiết kiệm & Đầu tư, Thu nhập, Khác`
+          CATEGORIES.join(", ")
         );
         return;
       }
@@ -1311,9 +1311,10 @@ export class BotService implements OnModuleInit {
 
       this.confirmationManager.set(internalUserId, channelUserId, expenses, "voice");
       await this.sendConfirmation(channelUserId, expenses, "voice");
-    } catch (error: any) {
-      this.logger.error(`[Voice] Parse failed for user=${internalUserId}`, error?.message);
-      if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[Voice] Parse failed for user=${internalUserId}`, message);
+      if (isInvalidJsonError(message)) {
         await this.channelAdapter.sendText(channelUserId, INVALID_JSON_MSG);
       } else {
         await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
@@ -1349,9 +1350,10 @@ export class BotService implements OnModuleInit {
 
       this.confirmationManager.set(internalUserId, channelUserId, expenses, "photo");
       await this.sendConfirmation(channelUserId, expenses, "photo");
-    } catch (error: any) {
-      this.logger.error(`[Photo] Parse failed for user=${internalUserId}`, error?.message);
-      if (error?.message?.includes("invalid JSON") || error?.message?.includes("Invalid JSON")) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[Photo] Parse failed for user=${internalUserId}`, message);
+      if (isInvalidJsonError(message)) {
         await this.channelAdapter.sendText(channelUserId, INVALID_JSON_MSG);
       } else {
         await this.channelAdapter.sendText(channelUserId, SERVICE_UNAVAILABLE_MSG);
@@ -1413,18 +1415,13 @@ export class BotService implements OnModuleInit {
     const categoryMatch = text.match(CHANGE_CATEGORY_REGEX);
     if (categoryMatch) {
       const rawCategory = categoryMatch[1].trim();
-      const lowered = rawCategory.toLowerCase();
-      const expanded = expandAbbreviations(lowered);
-      const normalized = normalizeSpelling(expanded);
-      const resolvedCategory = detectCategory(normalized) ?? detectCategory(expanded);
+      const resolvedCategory = resolveCategory(rawCategory);
 
       if (!resolvedCategory) {
         await this.channelAdapter.sendText(
           channelUserId,
           `Em chưa nhận ra danh mục "${rawCategory}". Sếp chọn một trong các danh mục:\n\n` +
-            `Ăn uống, Di chuyển, Mua sắm, Nhà ở, Tiện ích, Internet, ` +
-            `Sức khỏe, Giáo dục, Giải trí, Con cái, Chi phí cố định, ` +
-            `Tiết kiệm & Đầu tư, Thu nhập, Khác`,
+            CATEGORIES.join(", "),
         );
         // Keep pending active — user can retry
         return true;
@@ -1851,43 +1848,28 @@ export class BotService implements OnModuleInit {
     await this.answerCb(callbackId);
   }
 
-  /** Build inline keyboard with all 14 categories in rows of 3. */
-  private buildCategoryKeyboard(): InlineButton[][] {
-    const categories = [
-      "Ăn uống", "Di chuyển", "Mua sắm", "Nhà ở",
-      "Tiện ích", "Internet", "Sức khỏe", "Giáo dục",
-      "Giải trí", "Con cái", "Chi phí cố định", "Thu nhập",
-      "Tiết kiệm & Đầu tư", "Khác",
-    ];
-
+  /** Build a keyboard of all categories in rows of 3, using a caller-supplied callback data builder. */
+  private buildCategoryRows(toCallbackData: (category: string) => string): InlineButton[][] {
     const keyboard: InlineButton[][] = [];
-    for (let i = 0; i < categories.length; i += 3) {
-      const row = categories.slice(i, i + 3).map((cat) => ({
-        text: cat,
-        callbackData: `cat:${cat}`,
-      }));
-      keyboard.push(row);
+    for (let i = 0; i < CATEGORIES.length; i += 3) {
+      keyboard.push(
+        CATEGORIES.slice(i, i + 3).map((cat) => ({
+          text: cat,
+          callbackData: toCallbackData(cat),
+        })),
+      );
     }
     return keyboard;
   }
 
-  /** Build inline keyboard for editing a specific transaction's category. */
-  private buildEditCategoryKeyboard(txId: string): InlineButton[][] {
-    const categories = [
-      "Ăn uống", "Di chuyển", "Mua sắm", "Nhà ở",
-      "Tiện ích", "Internet", "Sức khỏe", "Giáo dục",
-      "Giải trí", "Con cái", "Chi phí cố định", "Thu nhập",
-      "Tiết kiệm & Đầu tư", "Khác",
-    ];
+  /** Category picker for the voice/photo confirmation flow. */
+  private buildCategoryKeyboard(): InlineButton[][] {
+    return this.buildCategoryRows((cat) => `cat:${cat}`);
+  }
 
-    const keyboard: InlineButton[][] = [];
-    for (let i = 0; i < categories.length; i += 3) {
-      const row = categories.slice(i, i + 3).map((cat) => ({
-        text: cat,
-        callbackData: `ecat:${txId}:${cat}`,
-      }));
-      keyboard.push(row);
-    }
+  /** Category picker for editing an existing transaction. */
+  private buildEditCategoryKeyboard(txId: string): InlineButton[][] {
+    const keyboard = this.buildCategoryRows((cat) => `ecat:${txId}:${cat}`);
     keyboard.push([{ text: "❌ Huỷ", callbackData: "editcancel" }]);
     return keyboard;
   }
