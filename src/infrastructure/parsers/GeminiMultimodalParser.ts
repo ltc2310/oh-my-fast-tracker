@@ -3,6 +3,7 @@ import { ConfigType } from "@nestjs/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ParsedExpense } from "../../domain/ports/Parser";
 import { MultimodalParser } from "../../domain/ports/MultimodalParser";
+import { normalizeCategory, isValidCategory, FALLBACK_CATEGORY } from "../../domain/constants/categories";
 import { aiConfig } from "../config/app.config";
 
 const VOICE_PROMPT = `Bạn là trợ lý ghi chi tiêu. Hãy nghe đoạn audio tiếng Việt và trích xuất TẤT CẢ các khoản chi tiêu được nhắc đến.
@@ -24,14 +25,19 @@ Danh mục (dùng ĐÚNG tên tiếng Việt bên dưới):
 - Giải trí (phim, game, netflix, du lịch, karaoke...)
 - Con cái (sữa, bỉm, đồ chơi, học phí con...)
 - Chi phí cố định (bảo hiểm, trả góp, phí dịch vụ...)
+- Tiết kiệm & Đầu tư (gửi tiết kiệm, đầu tư, chứng khoán, vàng, crypto...)
 - Thu nhập (lương, thưởng, freelance...)
-- Tiết kiệm (gửi tiết kiệm, đầu tư...)
 - Khác (không xác định được)
 
 Quy tắc:
 - Đơn vị: k = nghìn (x1000), tr = triệu (x1000000)
 - Nếu không nghe rõ số tiền hoặc không phải mô tả chi tiêu → trả về []
 - Chọn category dựa trên NGỮ CẢNH cho TỪNG khoản chi
+- category PHẢI là một trong 14 tên ở trên, copy chính xác từng ký tự. Không tự tạo tên mới.
+- Tên thương hiệu là tín hiệu mạnh: KFC / Phúc Long / Highlands / Haidilao / Circle K /
+  Bách Hoá Xanh → Ăn uống; Xanh SM / Vinasun / Vietjet → Di chuyển;
+  Shopee / Lazada / Uniqlo → Mua sắm; CGV / Netflix → Giải trí;
+  Pharmacity / Long Châu → Sức khỏe; Viettel / FPT Telecom → Internet
 
 Trả về JSON array:
 [{"amount": number, "category": "tên tiếng Việt", "note": "mô tả"}, ...]
@@ -99,30 +105,12 @@ export class GeminiMultimodalParser implements MultimodalParser {
         return [];
       }
 
-      const parsed = JSON.parse(content);
+      const parsed: unknown = JSON.parse(content);
+      const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
 
-      if (!Array.isArray(parsed)) {
-        if (parsed && parsed.amount && parsed.category) {
-          return [
-            {
-              amount: Number(parsed.amount),
-              category: parsed.category,
-              note: parsed.note ?? "",
-            },
-          ];
-        }
-        return [];
-      }
-
-      return parsed
-        .filter(
-          (item: Record<string, unknown>) => item && item.amount && item.category,
-        )
-        .map((item: Record<string, unknown>) => ({
-          amount: Number(item.amount),
-          category: item.category as string,
-          note: (item.note as string) ?? "",
-        }));
+      return items
+        .map((item) => this.toVoiceExpense(item))
+        .filter((item): item is ParsedExpense => item !== null);
     } catch (error) {
       this.logger.error(
         `Voice parsing failed: ${(error as Error).message}`,
@@ -155,36 +143,12 @@ export class GeminiMultimodalParser implements MultimodalParser {
         return [];
       }
 
-      const parsed = JSON.parse(content);
+      const parsed: unknown = JSON.parse(content);
+      const items: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
 
-      if (!Array.isArray(parsed)) {
-        if (parsed && parsed.amount) {
-          const recipient = (parsed.recipient as string) ?? "";
-          const bank = (parsed.bank as string) ?? "";
-          const note = [recipient, bank].filter(Boolean).join(" - ");
-          return [
-            {
-              amount: Number(parsed.amount),
-              category: "Khác",
-              note: note || "Chuyển khoản",
-            },
-          ];
-        }
-        return [];
-      }
-
-      return parsed
-        .filter((item: Record<string, unknown>) => item && item.amount)
-        .map((item: Record<string, unknown>) => {
-          const recipient = (item.recipient as string) ?? "";
-          const bank = (item.bank as string) ?? "";
-          const note = [recipient, bank].filter(Boolean).join(" - ");
-          return {
-            amount: Number(item.amount),
-            category: "Khác",
-            note: note || "Chuyển khoản",
-          };
-        });
+      return items
+        .map((item) => this.toTransferExpense(item))
+        .filter((item): item is ParsedExpense => item !== null);
     } catch (error) {
       this.logger.error(
         `Image parsing failed: ${(error as Error).message}`,
@@ -193,5 +157,56 @@ export class GeminiMultimodalParser implements MultimodalParser {
       );
       throw error;
     }
+  }
+
+  /**
+   * Validate one raw voice-parse item.
+   *
+   * Categories coming from the model are coerced through `normalizeCategory`.
+   * This matters most for savings: the prompt previously emitted "Tiết kiệm",
+   * which is NOT a canonical category, so `isIncomeCategory()` returned false
+   * and savings were persisted as a positive expense.
+   */
+  private toVoiceExpense(item: unknown): ParsedExpense | null {
+    if (!item || typeof item !== "object") return null;
+
+    const record = item as Record<string, unknown>;
+
+    const amount = Number(record.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.logger.warn(`Discarding voice item with invalid amount: ${JSON.stringify(record.amount)}`);
+      return null;
+    }
+
+    const rawCategory = typeof record.category === "string" ? record.category : "";
+    const category = normalizeCategory(rawCategory);
+    if (rawCategory && !isValidCategory(rawCategory)) {
+      this.logger.warn(`Voice parse returned unknown category "${rawCategory}" → mapped to "${category}"`);
+    }
+
+    const note = typeof record.note === "string" ? record.note.trim() : "";
+
+    return { amount, category, note };
+  }
+
+  /** Validate one raw bank-transfer item from an image. */
+  private toTransferExpense(item: unknown): ParsedExpense | null {
+    if (!item || typeof item !== "object") return null;
+
+    const record = item as Record<string, unknown>;
+
+    const amount = Number(record.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      this.logger.warn(`Discarding transfer item with invalid amount: ${JSON.stringify(record.amount)}`);
+      return null;
+    }
+
+    const recipient = typeof record.recipient === "string" ? record.recipient : "";
+    const bank = typeof record.bank === "string" ? record.bank : "";
+    const note = [recipient, bank].filter(Boolean).join(" - ") || "Chuyển khoản";
+
+    // Bank transfers carry no category signal — the user picks one in the
+    // confirmation flow.
+    return { amount, category: FALLBACK_CATEGORY, note };
   }
 }

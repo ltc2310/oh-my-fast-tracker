@@ -8,8 +8,10 @@ Type something like `ăn trưa 50k` and the bot parses the amount, detects the c
 
 - **Natural Vietnamese input** — "ăn sáng 70k, grab 30k, gửi xe 10k" records 3 transactions at once
 - **Abbreviation & slang support** — "cf 30k" (cà phê), "dt 500k" (điện thoại), "ts 30k" (trà sữa), informal spellings like "fở" (phở), and English keywords like "lunch", "gym", "parking"
+- **Brand & chain recognition** — ~230 well-known Vietnamese brands map straight to a category with no AI call: "kfc 120k", "phúc long 65k", "haidilao 800k", "circle k 45k", "bách hoá xanh 250k" → Ăn uống; "xanh sm 45k" → Di chuyển; "shopee 350k" → Mua sắm; "cgv 120k" → Giải trí; "pharmacity 95k" → Sức khỏe; "viettel 200k" → Internet. Longest-match disambiguation handles overlaps: "lotte" → Ăn uống but "lotte cinema" → Giải trí; "grab" → Di chuyển but "grabfood" → Ăn uống
 - **AI-powered categorization** — Hybrid parser: enhanced keyword-based regex with abbreviation expansion, spelling normalization, emoji detection, and cross-segment linking for speed; Gemini Flash AI fallback for truly ambiguous cases
-- **Enhanced regex parser** — Abbreviation expansion (cf, cp, dt, bv, st, ks, nt, ts), spelling normalization (f→ph, z→gi, w→qu), contextual emoji matching, cross-segment combination with connector verbs (hết, tốn, mất, trả, chi, xài, tiêu), longest-match category detection
+- **Enhanced regex parser** — Brand/chain table matched against raw text, abbreviation expansion (cf, cp, dt, bv, st, ks, nt, ts), spelling normalization (f→ph, z→gi, w→qu), contextual emoji matching, cross-segment combination with connector verbs (hết, tốn, mất, trả, chi, xài, tiêu), longest-match category detection across both brands and keywords
+- **Validated AI output** — Categories returned by Gemini are funnelled through a canonical whitelist (`normalizeCategory`), and amounts are rejected unless finite and positive. Prevents hallucinated categories and `NaN` amounts from reaching the database
 - **Whitelist access control** — Only approved users can interact with the bot. New users auto-register as pending, admin approves/blocks via REST API. Approved users get a Telegram notification.
 - **Past date support** — "hôm qua rửa xe 25k" saves with yesterday's `spent_at`
 - **Flexible reporting** — "báo cáo tuần trước", "chi tiêu tháng này", "từ 1/6 đến 30/6"
@@ -35,7 +37,7 @@ NestJS + Clean Architecture (domain → application → infrastructure).
 ```
 src/
   domain/           ← Pure interfaces, no dependencies
-    constants/        income-categories (income category set)
+    constants/        categories (canonical 14 + normalizeCategory), income-categories
     entities/         Transaction, WeeklySummary, MonthlyBreakdown, CategoryTrend, TrendReport, User, NotificationPreference
     ports/            ChannelAdapter, Parser, TokenService, TransactionRepository, UserRepository, NotificationSender, NotificationPreferenceRepository
 
@@ -102,6 +104,42 @@ This is enforced by `test/channels/bot-userid-contract.spec.ts`, which drives ev
 command path with deliberately different values for the two IDs and asserts each one
 lands in the right place. If you add a command, add it there too.
 
+### Categories: one source of truth
+
+`src/domain/constants/categories.ts` owns the canonical list of 14 categories. Nothing
+else may declare its own copy.
+
+| Helper | Use |
+|--------|-----|
+| `CATEGORIES` | The canonical array. Used to build inline keyboards and error messages |
+| `isValidCategory(s)` | Type guard for exact canonical names |
+| `normalizeCategory(s)` | Coerce arbitrary text (AI output) into a canonical name, falling back to `Khác` |
+
+Every AI parser (`AIParser`, `GeminiMultimodalParser`) runs its output through
+`normalizeCategory()` before returning. This is not optional: the multimodal prompt once
+emitted `"Tiết kiệm"` instead of `"Tiết kiệm & Đầu tư"`, which is not a canonical name, so
+`isIncomeCategory()` returned false and savings were persisted as **positive expenses**.
+
+`test/domain/categories.spec.ts` asserts every entry of `INCOME_CATEGORIES` is a valid
+category, so that mismatch cannot recur.
+
+### Category resolution pipeline
+
+`resolveCategory(text)` in `RegexParser` is the shared entry point used by both the parser
+and the bot layer:
+
+```
+raw text
+  ├─ BRAND_KEYWORDS   ← matched against RAW lowercase text
+  └─ CATEGORY_KEYWORDS ← matched after expandAbbreviations + normalizeSpelling
+       ↓
+   longest match wins (brands win ties)
+```
+
+Brands are matched against raw text on purpose. `normalizeSpelling` rewrites word-initial
+`f→ph`, `z→gi`, `w→qu`, which would turn `fpt` into `phpt`, `zara` into `giara` and
+`watsons` into `quatsons`. `test/parsers/regex-parser-brands.spec.ts` pins this behaviour.
+
 ## How it works
 
 ```
@@ -122,8 +160,12 @@ User message → TelegramAdapter → BotService
   ├─ Trend request?  → GenerateTrendReport → send summary + links
   ├─ Report request? → GenerateWeeklyReport → send summary + link
   └─ Expense?        → HybridParser → RecordTransaction → save to Supabase
-                          ├─ RegexParser (fast, free, keywords)
-                          └─ AIParser (Gemini Flash, semantic fallback)
+                          ├─ RegexParser (fast, free)
+                          │    ├─ BRAND_KEYWORDS   (kfc, phúc long, haidilao, ...)
+                          │    └─ CATEGORY_KEYWORDS (ăn, grab, xăng, ...)
+                          └─ AIParser (Gemini, semantic fallback — only when
+                             no brand/keyword matched; output normalized
+                             through the canonical category list)
 
 Scheduled notifications (via @nestjs/schedule):
   NotificationScheduler
@@ -262,6 +304,16 @@ npm run migrate   # applies all SQL files in order
 | `chi tiêu tháng trước` | Report previous month |
 | `chi tiêu 3 ngày qua` | Report last 3 days |
 | `chi tiêu từ 1/6 đến 30/6` | Report specific date range |
+| `kfc 120k` | Brand → Ăn uống |
+| `phúc long 65k` | Brand → Ăn uống (works with or without diacritics) |
+| `haidilao 800k` | Brand → Ăn uống |
+| `circle k 45k` | Brand → Ăn uống |
+| `bách hoá xanh 250k` | Brand → Ăn uống |
+| `xanh sm 45k` | Brand → Di chuyển |
+| `shopee 350k` | Brand → Mua sắm |
+| `cgv 120k` | Brand → Giải trí |
+| `pharmacity 95k` | Brand → Sức khỏe |
+| `lotte cinema 120k` | Brand → Giải trí (beats bare `lotte` → Ăn uống) |
 | `cf 30k` | Abbreviation: cà phê → Ăn uống |
 | `ts 30k` | Abbreviation: trà sữa → Ăn uống |
 | `dt 500k` | Abbreviation: điện thoại → Tiện ích |
@@ -476,19 +528,22 @@ Users who are `pending` or `blocked` receive a polite message and cannot use the
 ## Testing
 
 ```bash
-npm test              # run all tests (478 tests across 40 suites)
+npm test              # run all tests (622 tests across 43 suites)
 npm run test:watch    # watch mode
 ```
 
 ### Regression guards
 
-Two suites exist specifically to stop bugs that have shipped before. Keep them updated
-when adding commands:
+These suites exist specifically to stop bugs that have shipped before. Keep them updated
+when adding commands, brands or categories:
 
 | Suite | Guards against |
 |-------|----------------|
 | `test/channels/bot-userid-contract.spec.ts` | Passing `channelUserId` where `internalUserId` is required, and bypassing ownership checks on delete |
 | `test/channels/bot-command-routing.spec.ts` | Regex ordering/precedence mistakes (e.g. `xoá khoản vừa rồi` being read as a keyword search, `định mức … 5000000` being recorded as an expense) |
+| `test/domain/categories.spec.ts` | Income categories drifting out of the canonical list (the `Tiết kiệm` savings-sign bug) |
+| `test/parsers/ai-parser-validation.spec.ts` | Hallucinated categories and `NaN` / negative amounts from Gemini reaching the DB |
+| `test/parsers/regex-parser-brands.spec.ts` | Brand regressions, and spelling normalization mangling Latin brand names |
 
 ## Roadmap
 
@@ -508,6 +563,8 @@ when adding commands:
 - [x] **List transactions in chat** — "hôm nay chi gì", "5 khoản gần nhất", "hôm qua chi gì" to quickly review spending without opening web. *(completed)*
 - [x] **Admin chat commands** — `/pending`, `/approve`, `/block`, `/stats` for admin users in Telegram. Auto-notification on new user registration. *(completed)*
 - [x] **Delete by keyword** — "xoá khoản cà phê" finds matching transactions with fuzzy search, presents inline keyboard for selection when multiple matches. *(completed)*
+- [x] **Brand & chain recognition** — ~230 Vietnamese brands (KFC, Phúc Long, Haidilao, Circle K, Bách Hoá Xanh, Xanh SM, Shopee, CGV, Pharmacity, Viettel, SSI, ...) resolve to a category without an AI call, with longest-match disambiguation for overlapping names. *(completed)*
+- [x] **Canonical category enforcement** — Single source of truth in `domain/constants/categories.ts`; all AI output normalized through it, amounts validated finite and positive. *(completed)*
 - [ ] **Recurring expenses** — auto-detect and track fixed monthly costs
 - [ ] **Multi-channel support** — ZaloAdapter (interface is ready)
 - [ ] **Production deployment** — Render/Railway with webhook mode for Telegram
